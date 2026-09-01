@@ -1,0 +1,14 @@
+{
+  "name": "approval-guard",
+  "label": "Approval guard",
+  "description": "Enforces the spend policy's hard rules at the platform layer, for EVERY writer: an invoice that duplicates one already received, that is over the no-PO limit with no purchase order, or that exceeds its purchase order's remaining balance by more than the tolerance can never be approved. The decide_invoice tool and the review_invoice tool already enforce this in code, but the chat agent has rw store tools and a future tool could regress. This preToolUse hook fires on any store__invoices__set carrying status: approved or recommendation: approve, and on any store__reviews__set carrying recommendation: approve, reads the purchase order and the vendor's other invoices, and blocks the write when a rule fails. The thresholds mirror amodal/_lib/policy.ts and amodal/knowledge/spend-policy.md. Capability gate (store:read) + verified caller are platform-supplied, while the policy (the rule) is the author's, owned here.",
+  "points": ["preToolUse"],
+  "capabilities": ["store:read", "reads_tool_io", "gates_tools"],
+  "failPolicy": "closed",
+  "config": {
+    "guardedTools": ["store__invoices__set", "store__reviews__set"],
+    "noPoLimitUsd": 1000,
+    "tolerancePct": 0.02,
+    "toleranceMinUsd": 50
+  }
+}

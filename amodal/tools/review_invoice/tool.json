@@ -1,0 +1,37 @@
+{
+  "description": "Review one vendor invoice: load it (with its purchase order and the vendor's other invoices) from the stores, run the deterministic checks in code (purchase-order match, duplicate lookup, amount tolerance, line sum), delegate the policy judgment to the invoice-reviewer subagent, then record the review and stamp the invoice. Returns the saved review. Recommends approve / hold / escalate / reject for a human approver; never pays or approves anything itself. Reports found: false when the invoice id is unknown.",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "invoice_id": {
+        "type": "string",
+        "description": "The invoice to review, e.g. inv_brightline_0417."
+      }
+    },
+    "required": ["invoice_id"]
+  },
+  "runningLabel": "Reviewing {{invoice_id}}",
+  "completedLabel": "Reviewed {{invoice_id}}",
+  "timeout": 180000,
+  "uses": {
+    "tools": [
+      "store__invoices__get",
+      "store__invoices__query",
+      "store__invoices__set",
+      "store__purchase_orders__get",
+      "store__purchase_orders__query",
+      "store__purchase_orders__set",
+      "store__reviews__set"
+    ],
+    "subagents": ["invoice-reviewer"]
+  },
+  "triggers": [
+    {
+      "kind": "regex",
+      "pattern": "^\\s*(?:review|check|audit)\\s+(?<invoice_id>inv_[a-z0-9_]+)\\s*$",
+      "flags": "i",
+      "continueToLLM": true
+    }
+  ]
+}

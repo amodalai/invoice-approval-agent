@@ -1,0 +1,19 @@
+{
+  "name": "reviews",
+  "key": "{review_id}",
+  "schema": {
+    "review_id": { "type": "string" },
+    "invoice_id": { "type": "string" },
+    "recommendation": {
+      "type": "enum",
+      "values": ["approve", "hold", "escalate", "reject"]
+    },
+    "summary": { "type": "string" },
+    "checks": { "type": "array", "item": { "type": "object", "fields": {} } },
+    "issues": { "type": "array", "item": { "type": "string" } },
+    "reviewer_session_id": { "type": "string" },
+    "created_at": { "type": "datetime" }
+  },
+  "indexed": ["invoice_id", "recommendation", "created_at"],
+  "_comment_purpose": "The agent's structured review of one invoice, written by review_invoice. One row per invoice (keyed rev_{invoice_id}, so a re-review overwrites). `checks` are the review items ({name: purchase-order|amount|line-items|duplicate, status: pass|flag|fail, note}); `issues` is the plain-language list of what must be resolved before payment."
+}

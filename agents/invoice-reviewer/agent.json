@@ -1,0 +1,6 @@
+{
+  "name": "Invoice Reviewer",
+  "description": "Checks one vendor invoice against the company's fictional spend policy. Returns one check per category, an issues list, and a single recommendation (approve / hold / escalate / reject) as a JSON object, for a human approver. Does NOT approve, pay, or reject anything itself.",
+  "tools": ["invoice_math", "load_knowledge"],
+  "timeout": 120
+}

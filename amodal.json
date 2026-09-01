@@ -1,0 +1,8 @@
+{
+  "name": "invoice-approval-agent",
+  "version": "0.1.0",
+  "runtimeApp": { "custom": true },
+  "memory": {
+    "enabled": false
+  }
+}

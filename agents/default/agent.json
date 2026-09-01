@@ -1,0 +1,10 @@
+{
+  "name": "Invoice Approval Chat",
+  "description": "The chat front door for the invoice approval demo. Reports review results and answers questions from the stores; the deterministic work runs in triggered tools, and decisions come only from the operator's Approve / Reject action.",
+  "tools": ["review_invoice", "seed_examples", "invoice_math"],
+  "stores": {
+    "invoices": "rw",
+    "purchase_orders": "rw",
+    "reviews": "rw"
+  }
+}
