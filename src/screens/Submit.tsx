@@ -3,7 +3,7 @@ import { useToolRun } from "@amodalai/react";
 import { LineItemsEditor, emptyLine, lineAmount, type LineDraft } from "../components/LineItemsEditor.js";
 import { hashOf } from "../routes.js";
 import { errorMessage, runTool } from "../tools.js";
-import { usd, type Data, type InvoiceRow } from "../types.js";
+import { remaining, usd, type Data, type InvoiceRow } from "../types.js";
 
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 const plusDays = (days: number) => isoDay(new Date(Date.now() + days * 86_400_000));
@@ -75,7 +75,7 @@ export function Submit({ data, requester, initial }: { data: Data; requester: st
             <option value="">None</option>
             {openPos.map((p) => (
               <option key={p.po_number} value={p.po_number}>
-                {p.po_number}: {p.vendor_name}, {usd(p.amount_usd - p.billed_to_date_usd)} remaining
+                {p.po_number}: {p.vendor_name}, {usd(remaining(p))} remaining
               </option>
             ))}
           </select>

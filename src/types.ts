@@ -83,6 +83,8 @@ export const usd = (n: number) =>
 export const when = (iso: string) =>
   new Date(iso).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
+export const remaining = (po: PORow) => po.amount_usd - po.billed_to_date_usd;
+
 export const isDecided = (inv: InvoiceRow) => inv.status === "approved" || inv.status === "rejected";
 
 /** The review the invoice names, else the newest one. */

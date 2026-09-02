@@ -1,6 +1,6 @@
 import type { InvoiceActions } from "../actions.js";
 import { hashOf } from "../routes.js";
-import { latestReview, usd, type Data, type InvoiceRow } from "../types.js";
+import { latestReview, remaining, usd, type Data, type InvoiceRow } from "../types.js";
 import { InvoiceActionButtons } from "./InvoiceActions.js";
 import { StatusPill } from "./StatusPill.js";
 
@@ -26,7 +26,7 @@ function Row({ inv, data, actions }: { inv: InvoiceRow; data: Data; actions: Inv
           <>
             <div>{po.po_number}</div>
             <div className="note">{po.description}</div>
-            <div className="note">{usd(po.amount_usd - po.billed_to_date_usd)} remaining</div>
+            <div className="note">{usd(remaining(po))} remaining</div>
           </>
         ) : (
           <span className="muted-text">{inv.po_number ?? "None"}</span>

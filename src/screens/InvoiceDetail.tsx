@@ -5,7 +5,7 @@ import { ReviewBody } from "../components/ReviewBody.js";
 import { StatusPill } from "../components/StatusPill.js";
 import { Timeline } from "../components/Timeline.js";
 import { hashOf } from "../routes.js";
-import { REC_LABEL, latestReview, usd, type Data, type InvoiceRow } from "../types.js";
+import { REC_LABEL, latestReview, remaining, usd, type Data, type InvoiceRow } from "../types.js";
 import { Submit } from "./Submit.js";
 
 /** Dates, purchase order, line items against the stated total, notes. */
@@ -29,7 +29,7 @@ export function InvoiceSection({ inv, data }: { inv: InvoiceRow; data: Data }) {
             <>
               {po.po_number}: {po.description}
               <div className="note">
-                {usd(po.amount_usd - po.billed_to_date_usd)} remaining of {usd(po.amount_usd)}, {po.status}
+                {usd(remaining(po))} remaining of {usd(po.amount_usd)}, {po.status}
               </div>
             </>
           ) : (

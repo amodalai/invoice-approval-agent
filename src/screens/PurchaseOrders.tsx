@@ -1,6 +1,6 @@
 import { StatusPill } from "../components/StatusPill.js";
 import { hashOf } from "../routes.js";
-import { usd, type Data } from "../types.js";
+import { remaining, usd, type Data } from "../types.js";
 
 export function PurchaseOrders({ data }: { data: Data }) {
   const pos = [...data.pos.values()].sort(
@@ -41,7 +41,7 @@ export function PurchaseOrders({ data }: { data: Data }) {
               </td>
               <td className="num">{usd(po.amount_usd)}</td>
               <td className="num">{usd(po.billed_to_date_usd)}</td>
-              <td className="num">{usd(po.amount_usd - po.billed_to_date_usd)}</td>
+              <td className="num">{usd(remaining(po))}</td>
               <td>
                 <ul className="plain-list">
                   {data.invoices
