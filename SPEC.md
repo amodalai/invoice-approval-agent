@@ -457,7 +457,8 @@ src/
   styles.css
 tests/
   policy.test.ts  invoice-review.test.ts  decide-invoice.test.ts  demo-data.test.ts  approval-guard.test.mjs
-  submit.test.ts  events.test.ts  reset-demo.test.ts  routes.test.ts
+  submit.test.ts  events.test.ts  reset-demo.test.ts  routes.test.ts  review-invoice-handler.test.ts
+  helpers.ts                asserts a handler's store calls are declared in its tool.json uses
 ```
 
 ## Tests and evals
