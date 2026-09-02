@@ -54,7 +54,7 @@ export function invoiceMath(input: InvoiceMathInput): InvoiceMath {
     ),
   );
   const total = Number(input.total_usd) || 0;
-  const base: Omit<InvoiceMath, "po_remaining_usd" | "variance_usd" | "variance_pct" | "tolerance_usd" | "within_tolerance"> = {
+  const base = {
     line_sum_usd,
     total_matches_lines: Math.abs(line_sum_usd - total) < 0.005,
     over_controller_limit: total > POLICY.controller_limit_usd,
