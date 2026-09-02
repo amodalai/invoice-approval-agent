@@ -4,12 +4,17 @@ import { InvoiceActionButtons } from "../components/InvoiceActions.js";
 import { ReviewBody } from "../components/ReviewBody.js";
 import { StatusPill } from "../components/StatusPill.js";
 import { Timeline } from "../components/Timeline.js";
+import { hashOf } from "../routes.js";
 import { REC_LABEL, latestReview, usd, type Data, type InvoiceRow } from "../types.js";
+import { Submit } from "./Submit.js";
 
 /** Dates, purchase order, line items against the stated total, notes. */
 export function InvoiceSection({ inv, data }: { inv: InvoiceRow; data: Data }) {
   const po = inv.po_number ? data.pos.get(inv.po_number) : undefined;
-  const math = invoiceMath({ line_items: inv.line_items, total_usd: inv.total_usd });
+  const math = invoiceMath({
+    line_items: inv.line_items,
+    total_usd: inv.total_usd,
+  });
   return (
     <section className="card">
       <h3>Invoice</h3>
@@ -23,7 +28,9 @@ export function InvoiceSection({ inv, data }: { inv: InvoiceRow; data: Data }) {
           {po ? (
             <>
               {po.po_number}: {po.description}
-              <div className="note">{usd(po.amount_usd - po.billed_to_date_usd)} remaining of {usd(po.amount_usd)}, {po.status}</div>
+              <div className="note">
+                {usd(po.amount_usd - po.billed_to_date_usd)} remaining of {usd(po.amount_usd)}, {po.status}
+              </div>
             </>
           ) : (
             (inv.po_number ?? "None")
@@ -54,7 +61,8 @@ export function InvoiceSection({ inv, data }: { inv: InvoiceRow; data: Data }) {
           </tr>
           <tr>
             <td colSpan={3}>
-              Stated total{math.total_matches_lines ? "" : <span className="row-error"> (does not match the lines)</span>}
+              Stated total
+              {math.total_matches_lines ? "" : <span className="row-error"> (does not match the lines)</span>}
             </td>
             <td className="num">
               <strong>{usd(inv.total_usd)}</strong>
@@ -67,14 +75,50 @@ export function InvoiceSection({ inv, data }: { inv: InvoiceRow; data: Data }) {
   );
 }
 
-export function InvoiceDetail({ id, data }: { id: string; data: Data }) {
+/**
+ * The requester's view: the invoice and its status label; on a return, the
+ * note, the issues, and the form to resubmit; once decided, the approver's
+ * note. No checks, no recommendation, no timeline.
+ */
+function RequesterDetail({ inv, data, requester }: { inv: InvoiceRow; data: Data; requester: string }) {
+  const review = latestReview(data, inv);
+  return (
+    <>
+      <InvoiceSection inv={inv} data={data} />
+      {inv.status === "returned" ? (
+        <>
+          <section className="card">
+            <h3>Returned by the approver</h3>
+            <p>{inv.returned_note}</p>
+            {review?.issues.length ? (
+              <ul className="issue-list">
+                {review.issues.map((m) => (
+                  <li key={m}>{m}</li>
+                ))}
+              </ul>
+            ) : null}
+          </section>
+          <Submit data={data} requester={requester} initial={inv} />
+        </>
+      ) : null}
+      {inv.status === "approved" || inv.status === "rejected" ? (
+        <section className="card">
+          <h3>{inv.status === "approved" ? "Approved" : "Rejected"} by the approver</h3>
+          <p>{inv.decision_note ?? <span className="sub">No note.</span>}</p>
+        </section>
+      ) : null}
+    </>
+  );
+}
+
+export function InvoiceDetail({ id, data, requester }: { id: string; data: Data; requester?: string }) {
   const actions = useInvoiceActions(data);
   const inv = data.invoices.find((i) => i.invoice_id === id);
   if (!inv) {
     return (
       <div className="empty">
         <p>No invoice {id}.</p>
-        <a href="#/queue">Back to the queue</a>
+        <a href={hashOf({ name: requester ? "mine" : "queue" })}>Back</a>
       </div>
     );
   }
@@ -92,34 +136,40 @@ export function InvoiceDetail({ id, data }: { id: string; data: Data }) {
             {usd(inv.total_usd)} · {inv.requester} · revision {inv.revision} · {inv.invoice_id}
           </p>
         </div>
-        <StatusPill inv={inv} />
+        <StatusPill inv={inv} requester={!!requester} />
       </div>
-      <InvoiceSection inv={inv} data={data} />
-      <section className="card">
-        <h3>Latest review</h3>
-        {review ? (
-          <>
-            <p>
-              <span className={`pill rec-${review.recommendation}`}>{REC_LABEL[review.recommendation]}</span>{" "}
-              <span className="muted-text">revision {review.revision}</span>
-            </p>
-            <ReviewBody review={review} />
-          </>
-        ) : (
-          <p className="sub">Not reviewed yet.</p>
-        )}
-      </section>
-      <section className="card">
-        <h3>Actions</h3>
-        <div className="actions">
-          <InvoiceActionButtons inv={inv} actions={actions} />
-        </div>
-      </section>
-      <section className="card">
-        <h3>Timeline</h3>
-        <Timeline events={events} reviews={reviews} />
-      </section>
-      {actions.modal}
+      {requester ? (
+        <RequesterDetail inv={inv} data={data} requester={requester} />
+      ) : (
+        <>
+          <InvoiceSection inv={inv} data={data} />
+          <section className="card">
+            <h3>Latest review</h3>
+            {review ? (
+              <>
+                <p>
+                  <span className={`pill rec-${review.recommendation}`}>{REC_LABEL[review.recommendation]}</span>{" "}
+                  <span className="muted-text">revision {review.revision}</span>
+                </p>
+                <ReviewBody review={review} />
+              </>
+            ) : (
+              <p className="sub">Not reviewed yet.</p>
+            )}
+          </section>
+          <section className="card">
+            <h3>Actions</h3>
+            <div className="actions">
+              <InvoiceActionButtons inv={inv} actions={actions} />
+            </div>
+          </section>
+          <section className="card">
+            <h3>Timeline</h3>
+            <Timeline events={events} reviews={reviews} />
+          </section>
+          {actions.modal}
+        </>
+      )}
     </section>
   );
 }

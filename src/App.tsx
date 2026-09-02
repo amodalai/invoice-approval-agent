@@ -2,13 +2,15 @@ import { useEffect, useRef, useState } from "react";
 import { ChatWidget, useAmodalContext, useStoreQuery, useToolRun } from "@amodalai/react";
 import { REQUESTERS } from "../amodal/_lib/examples.js";
 import { ConfirmModal } from "./components/ConfirmModal.js";
-import { personaFromId, personaId, usePersona } from "./persona.js";
+import { personaFromId, personaId, usePersona, type Persona } from "./persona.js";
 import { TABS, hashOf, resolveRoute, type Role, type Route } from "./routes.js";
 import { History } from "./screens/History.js";
 import { InvoiceDetail } from "./screens/InvoiceDetail.js";
+import { MyInvoices } from "./screens/MyInvoices.js";
 import { Policy } from "./screens/Policy.js";
 import { PurchaseOrders } from "./screens/PurchaseOrders.js";
 import { Queue } from "./screens/Queue.js";
+import { Submit } from "./screens/Submit.js";
 import { errorMessage, runTool } from "./tools.js";
 import type { Data, EventRow, InvoiceRow, PORow, ReviewRow } from "./types.js";
 
@@ -26,10 +28,15 @@ function useHashRoute(role: Role): Route {
   return route;
 }
 
-function Screen({ route, data }: { route: Route; data: Data }) {
+function Screen({ route, data, persona }: { route: Route; data: Data; persona: Persona }) {
+  const requester = persona.role === "requester" ? persona.requester : undefined;
   switch (route.name) {
     case "invoice":
-      return <InvoiceDetail id={route.id} data={data} />;
+      return <InvoiceDetail id={route.id} data={data} requester={requester} />;
+    case "submit":
+      return requester ? <Submit key={requester} data={data} requester={requester} /> : null;
+    case "mine":
+      return requester ? <MyInvoices data={data} requester={requester} /> : null;
     case "purchase-orders":
       return <PurchaseOrders data={data} />;
     case "history":
@@ -154,7 +161,7 @@ export default function App() {
       ) : seed.status === "running" ? (
         <div className="empty">Loading the demo…</div>
       ) : (
-        <Screen route={route} data={data} />
+        <Screen route={route} data={data} persona={persona} />
       )}
 
       <footer className="foot">
