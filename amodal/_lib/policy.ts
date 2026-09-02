@@ -44,7 +44,7 @@ export interface InvoiceMath {
   policy: typeof POLICY;
 }
 
-const cents = (n: number) => Math.round(n * 100) / 100;
+export const cents = (n: number) => Math.round(n * 100) / 100;
 
 export function invoiceMath(input: InvoiceMathInput): InvoiceMath {
   const line_sum_usd = cents(

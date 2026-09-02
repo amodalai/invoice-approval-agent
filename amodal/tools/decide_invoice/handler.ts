@@ -1,5 +1,6 @@
 import type { CustomToolContext } from "../../_types/tool-context.js";
 import { appendEvent } from "../../_lib/events.js";
+import { cents } from "../../_lib/policy.js";
 import {
   approvalBlockers,
   checkInvoice,
@@ -85,7 +86,7 @@ export default async function decide_invoice(params: DecideInvoiceParams, ctx: C
   if (decision === "approved" && po) {
     await callTool("store__purchase_orders__set", {
       key: po.po_number,
-      value: { ...po, billed_to_date_usd: po.billed_to_date_usd + invoice.total_usd },
+      value: { ...po, billed_to_date_usd: cents(po.billed_to_date_usd + invoice.total_usd) },
     });
   }
   await appendEvent(

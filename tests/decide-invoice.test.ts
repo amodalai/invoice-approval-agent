@@ -52,6 +52,18 @@ test("approving a clean reviewed invoice stamps it and books the PO", async () =
   assert.equal(store.get("purchase_orders:PO-1041")!.billed_to_date_usd, 12_000);
 });
 
+test("the booked total lands on the cent, not on the raw float sum", async () => {
+  const { ctx, store } = seededCtx({ reviewed: ["inv_brightline_0417"] });
+  store.set("purchase_orders:PO-1041", { ...store.get("purchase_orders:PO-1041")!, billed_to_date_usd: 4_000.1 });
+  store.set("invoices:inv_brightline_0417", {
+    ...store.get("invoices:inv_brightline_0417")!,
+    total_usd: 4_000.2,
+    line_items: [{ description: "Cloud hosting, August 2026, 40 vCPU tier", quantity: 1, unit_price_usd: 4_000.2 }],
+  });
+  await decide_invoice({ invoice_id: "inv_brightline_0417", decision: "approved" }, ctx);
+  assert.equal(store.get("purchase_orders:PO-1041")!.billed_to_date_usd, 8_000.3);
+});
+
 test("rejecting needs a review but re-checks nothing, and leaves the PO alone", async () => {
   const { ctx, store } = seededCtx({ reviewed: ["inv_norwood_2288"] });
   await decide_invoice({ invoice_id: "inv_norwood_2288", decision: "rejected" }, ctx);
