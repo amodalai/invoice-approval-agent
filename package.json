@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
-  "description": "An Amodal example that reviews vendor invoices against purchase orders and a spend policy: a composite tool that matches the invoice in code and delegates the judgment to a reviewer subagent, three stores, a custom React UI with operator-gated Approve/Reject, and a preToolUse guard hook that enforces the hard rules platform-wide.",
+  "description": "An Amodal example that reviews vendor invoices against purchase orders and a spend policy: a requester submits from a custom React UI, a durable tool matches the invoice in code and delegates the judgment to a reviewer subagent, an approver approves, returns, or rejects, four stores keep the invoices, purchase orders, reviews, and events, and a preToolUse guard hook enforces the hard rules platform-wide.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -28,7 +28,7 @@
     "type": "template",
     "name": "invoice-approval-example",
     "displayName": "Invoice Approval Example",
-    "description": "Review vendor invoices against their purchase orders and a fictional spend policy. The invoice-reviewer subagent checks each invoice and recommends approve, hold, escalate, or reject for a human approver. The agent assists; a human decides.",
+    "description": "Review vendor invoices against their purchase orders and a fictional spend policy. A requester submits an invoice, the invoice-reviewer subagent checks it and recommends approve, hold, escalate, or reject, and an approver decides or returns it for a fix. The agent assists; a human decides.",
     "category": "Finance"
   }
 }
