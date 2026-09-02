@@ -101,9 +101,9 @@ export async function submitInvoice(input: unknown, deps: ReviewDeps) {
     invoice = { ...existing, ...fields, ...NEW_INVOICE_DEFAULTS, revision: (existing.revision ?? 1) + 1, submitted_at: nowIso };
   } else {
     const base = `inv_${slug(fields.vendor_name)}_${slug(fields.invoice_number)}`;
-    const taken = new Set(others.map((o) => o.invoice_id));
+    const taken = async (key: string) => !!storeGetResult<InvoiceRow>(await deps.callTool("store__invoices__get", { key }));
     let invoice_id = base;
-    for (let n = 2; taken.has(invoice_id); n += 1) invoice_id = `${base}_${n}`;
+    for (let n = 2; await taken(invoice_id); n += 1) invoice_id = `${base}_${n}`;
     invoice = { invoice_id, ...fields, revision: 1, ...NEW_INVOICE_DEFAULTS, received_at: nowIso, submitted_at: nowIso, created_at: nowIso };
   }
   const revision = invoice.revision!;

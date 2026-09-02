@@ -112,7 +112,8 @@ test("a new submission writes the row, appends submitted, and reviews the in-mem
   assert.equal(row.received_at, NOW);
   assert.equal(row.submitted_at, NOW);
   assert.equal(row.revision, 1);
-  assert.ok(!calls.some(([n, a]) => n === "store__invoices__get" && a.key === out.invoice_id), "never reads its own row back");
+  const written = calls.findIndex(([n, a]) => n === "store__invoices__set" && a.key === out.invoice_id);
+  assert.ok(!calls.slice(written).some(([n, a]) => n === "store__invoices__get" && a.key === out.invoice_id), "never reads its own row back");
   assert.equal(subagentCalls(), 1);
   assert.deepEqual(events().map((e) => [e.kind, e.actor, e.revision]), [["submitted", OMAR, 1], ["reviewed", "agent", 1]]);
   assertDeclared("submit_invoice", calls.map(([n]) => n));
@@ -127,6 +128,15 @@ test("a resent invoice number gets its own row with a numeric suffix and is revi
   assert.equal(again.invoice_id, "inv_brightline_cloud_services_0417_2");
   assert.equal(again.recommendation, "reject");
   assert.ok(store.has("invoices:inv_brightline_cloud_services_0417") && store.has("invoices:inv_brightline_cloud_services_0417_2"));
+});
+
+test("an id another vendor spelling already took gets the numeric suffix", async () => {
+  const { deps, store } = fakeDeps();
+  const existing = { ...invoiceRow(INVOICES[0], NOW), invoice_id: "inv_acme_inc_100", vendor_name: "Acme, Inc.", invoice_number: "100" };
+  store.set("invoices:inv_acme_inc_100", existing);
+  const out = await submitInvoice({ ...form, vendor_name: "Acme Inc", invoice_number: "100" }, deps);
+  assert.equal(out.invoice_id, "inv_acme_inc_100_2");
+  assert.deepEqual(store.get("invoices:inv_acme_inc_100"), existing);
 });
 
 test("a resubmission replaces a returned invoice at revision + 1 and clears the return", async () => {
