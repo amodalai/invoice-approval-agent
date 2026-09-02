@@ -250,31 +250,39 @@ export interface LoadedInvoice {
   others: InvoiceRow[];
 }
 
-/**
- * Load an invoice with its purchase order and the vendor's other invoices.
- * On fresh stores the demo invoice is taken from the dataset and the stores
- * are seeded for later runs: a run cannot read back its own uncommitted
- * writes, so the rows just written are not visible in this run.
- */
+/** Load an invoice with its purchase order and the vendor's other invoices. */
 export async function loadInvoice(
   invoice_id: string,
-  deps: Pick<ReviewDeps, "callTool" | "now" | "trace">,
+  deps: Pick<ReviewDeps, "callTool">,
 ): Promise<LoadedInvoice | undefined> {
   const invoice = storeGetResult<InvoiceRow>(
     await deps.callTool("store__invoices__get", { key: invoice_id }),
   );
-  if (invoice) {
-    const po = invoice.po_number
-      ? storeGetResult<PORow>(await deps.callTool("store__purchase_orders__get", { key: invoice.po_number }))
-      : undefined;
-    const others = rows<InvoiceRow>(
-      await deps.callTool("store__invoices__query", {
-        where: { vendor_name: invoice.vendor_name },
-        limit: 200,
-      }),
-    );
-    return { invoice, po, others };
-  }
+  if (!invoice) return undefined;
+  const po = invoice.po_number
+    ? storeGetResult<PORow>(await deps.callTool("store__purchase_orders__get", { key: invoice.po_number }))
+    : undefined;
+  const others = rows<InvoiceRow>(
+    await deps.callTool("store__invoices__query", {
+      where: { vendor_name: invoice.vendor_name },
+      limit: 200,
+    }),
+  );
+  return { invoice, po, others };
+}
+
+/**
+ * The review's load. On fresh stores the demo invoice is taken from the
+ * dataset and the stores are seeded for later runs: a run cannot read back
+ * its own uncommitted writes, so the rows just written are not visible in
+ * this run. review_invoice's `uses` therefore declares the seed's tools.
+ */
+async function loadOrSeedExample(
+  invoice_id: string,
+  deps: Pick<ReviewDeps, "callTool" | "now" | "trace">,
+): Promise<LoadedInvoice | undefined> {
+  const loaded = await loadInvoice(invoice_id, deps);
+  if (loaded) return loaded;
 
   const example = INVOICES.find((i) => i.invoice_id === invoice_id);
   if (!example) return undefined;
@@ -299,7 +307,7 @@ export async function runInvoiceReview(
   deps: ReviewDeps,
   preloaded?: LoadedInvoice,
 ): Promise<ReviewOutcome> {
-  const loaded = preloaded ?? (await loadInvoice(invoice_id, deps));
+  const loaded = preloaded ?? (await loadOrSeedExample(invoice_id, deps));
   if (!loaded) return { found: false, invoice_id };
   const { invoice, po, others } = loaded;
 

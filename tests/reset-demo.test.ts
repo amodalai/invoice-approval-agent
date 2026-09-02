@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { resetDemo } from "../amodal/_lib/reset.js";
 import { STORE_KEYS, seedRows } from "../amodal/_lib/demo-data.js";
+import { assertDeclared } from "./helpers.js";
 
 const NOW = "2026-09-01T12:00:00.000Z";
 
@@ -31,4 +32,5 @@ test("removes every row in the four stores before seeding blind, then records th
   assert.equal(last[0], "store__events__set");
   assert.deepEqual([(last[1].value as { kind: string }).kind, (last[1].value as { actor: string }).actor], ["reset", "system"]);
   assert.equal(sets.filter(([, a]) => (a.value as { kind?: string }).kind === "reset").length, 1);
+  assertDeclared("reset_demo", names);
 });

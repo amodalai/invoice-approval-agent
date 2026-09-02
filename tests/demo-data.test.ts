@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { INVOICES, PURCHASE_ORDERS, STORE_KEYS, ensureExamplesSeeded, invoiceRow, seedRows } from "../amodal/_lib/demo-data.js";
 import { BACKLOG, BACKLOG_PURCHASE_ORDERS, REQUESTERS } from "../amodal/_lib/examples.js";
 import { POLICY, invoiceMath } from "../amodal/_lib/policy.js";
+import { assertDeclared } from "./helpers.js";
 
 const NOW = "2026-09-01T00:00:00.000Z";
 const ALL_INVOICES = [...INVOICES, ...BACKLOG];
@@ -132,6 +133,7 @@ test("seeding writes only the rows that are missing, in every store", async () =
   assert.equal(first.revision, 1);
   assert.equal(first.requester, "Omar Haddad (Engineering)");
   assert.equal(first.submitted_at, first.received_at);
+  assertDeclared("seed_examples", calls.map(([n]) => n));
 });
 
 test("seeding twice writes nothing the second time, and assumeEmpty skips the lookups", async () => {

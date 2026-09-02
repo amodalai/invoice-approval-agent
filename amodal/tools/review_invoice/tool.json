@@ -23,7 +23,9 @@
       "store__purchase_orders__get",
       "store__purchase_orders__query",
       "store__purchase_orders__set",
+      "store__reviews__query",
       "store__reviews__set",
+      "store__events__query",
       "store__events__set"
     ],
     "subagents": ["invoice-reviewer"]

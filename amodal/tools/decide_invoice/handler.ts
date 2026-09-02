@@ -51,7 +51,7 @@ export default async function decide_invoice(params: DecideInvoiceParams, ctx: C
   const callTool = (name: string, args: Record<string, unknown>) => ctx.callTool!(name, args);
   const now = () => new Date(ctx.now ? ctx.now() : Date.now());
 
-  const loaded = await loadInvoice(invoice_id, { callTool, now });
+  const loaded = await loadInvoice(invoice_id, { callTool });
   if (!loaded) throw new Error(`Invoice ${invoice_id} not found.`);
   const { invoice, po, others } = loaded;
   if (invoice.status !== "reviewed") {

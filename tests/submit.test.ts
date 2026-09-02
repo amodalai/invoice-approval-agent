@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { slug, submitInvoice, validateSubmission } from "../amodal/_lib/submit.js";
 import { INVOICES, PURCHASE_ORDERS, invoiceRow, poRow } from "../amodal/_lib/demo-data.js";
+import { assertDeclared } from "./helpers.js";
 
 const NOW = "2026-09-01T12:00:00.000Z";
 const OMAR = "Omar Haddad (Engineering)";
@@ -114,6 +115,7 @@ test("a new submission writes the row, appends submitted, and reviews the in-mem
   assert.ok(!calls.some(([n, a]) => n === "store__invoices__get" && a.key === out.invoice_id), "never reads its own row back");
   assert.equal(subagentCalls(), 1);
   assert.deepEqual(events().map((e) => [e.kind, e.actor, e.revision]), [["submitted", OMAR, 1], ["reviewed", "agent", 1]]);
+  assertDeclared("submit_invoice", calls.map(([n]) => n));
 });
 
 test("a resent invoice number gets its own row with a numeric suffix and is reviewed as a duplicate", async () => {
@@ -128,7 +130,7 @@ test("a resent invoice number gets its own row with a numeric suffix and is revi
 });
 
 test("a resubmission replaces a returned invoice at revision + 1 and clears the return", async () => {
-  const { deps, store, events } = fakeDeps();
+  const { deps, store, events, calls } = fakeDeps();
   const returned = invoiceRow({ ...INVOICES[3], invoice_id: "inv_x", requester: OMAR }, "2026-08-01T00:00:00.000Z");
   store.set("invoices:inv_x", {
     ...returned,
@@ -151,6 +153,7 @@ test("a resubmission replaces a returned invoice at revision + 1 and clears the 
   assert.equal(row.created_at, "2026-08-01T00:00:00.000Z");
   assert.notEqual(row.review_id, "rev_old");
   assert.deepEqual(events().map((e) => [e.kind, e.revision]), [["resubmitted", 2], ["reviewed", 2]]);
+  assertDeclared("submit_invoice", calls.map(([n]) => n));
 });
 
 test("a resubmission is refused unless the invoice is returned and the requester matches", async () => {

@@ -3,11 +3,13 @@ import assert from "node:assert/strict";
 import decide_invoice from "../amodal/tools/decide_invoice/handler.js";
 import { INVOICES, PURCHASE_ORDERS, invoiceRow, poRow } from "../amodal/_lib/demo-data.js";
 import type { CustomToolContext } from "../amodal/_types/tool-context.js";
+import { assertDeclared } from "./helpers.js";
 
 const NOW = "2026-09-01T12:00:00.000Z";
 
 function seededCtx(opts: { reviewed?: string[] } = {}) {
   const store = new Map<string, Record<string, unknown>>();
+  const tools: string[] = [];
   for (const p of PURCHASE_ORDERS) store.set(`purchase_orders:${p.po_number}`, poRow(p, NOW));
   for (const i of INVOICES) store.set(`invoices:${i.invoice_id}`, invoiceRow(i, NOW));
   for (const id of opts.reviewed ?? []) {
@@ -19,6 +21,7 @@ function seededCtx(opts: { reviewed?: string[] } = {}) {
     signal: new AbortController().signal,
     now: () => Date.parse(NOW),
     async callTool(name, args) {
+      tools.push(name);
       const m = /^store__(\w+)__(get|set|query)$/.exec(name)!;
       const key = (k: string) => `${m[1]}:${k}`;
       if (m[2] === "get") return (store.get(key(String(args.key))) ?? { error: "not found" }) as never;
@@ -35,7 +38,7 @@ function seededCtx(opts: { reviewed?: string[] } = {}) {
       } as never;
     },
   };
-  return { ctx, store };
+  return { ctx, store, tools };
 }
 
 test("approving a clean reviewed invoice stamps it and books the PO", async () => {
@@ -111,7 +114,7 @@ test("approving against an escalate recommendation needs a note", async () => {
 });
 
 test("each decision appends exactly one event with actor approver, the note, and the revision", async () => {
-  const { ctx, store } = seededCtx({ reviewed: ["inv_brightline_0417", "inv_norwood_2288", "inv_atlas_9911"] });
+  const { ctx, store, tools } = seededCtx({ reviewed: ["inv_brightline_0417", "inv_norwood_2288", "inv_atlas_9911"] });
   store.set("invoices:inv_atlas_9911", { ...store.get("invoices:inv_atlas_9911")!, revision: 2 });
   await decide_invoice({ invoice_id: "inv_brightline_0417", decision: "approved" }, ctx);
   await decide_invoice({ invoice_id: "inv_norwood_2288", decision: "rejected", note: "Over the PO." }, ctx);
@@ -126,4 +129,13 @@ test("each decision appends exactly one event with actor approver, the note, and
       ["inv_atlas_9911", "returned", "approver", "Drop the workshop line.", 2, NOW],
     ],
   );
+  assertDeclared("decide_invoice", tools);
+});
+
+test("a demo id missing from the stores is not found: only the review self-seeds", async () => {
+  const { ctx, store, tools } = seededCtx();
+  store.clear();
+  await assert.rejects(decide_invoice({ invoice_id: "inv_brightline_0417", decision: "rejected" }, ctx), /not found/);
+  assert.equal(store.size, 0);
+  assertDeclared("decide_invoice", tools);
 });
