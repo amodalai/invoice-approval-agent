@@ -4,6 +4,10 @@ import { REQUESTERS } from "../amodal/_lib/examples.js";
 import { ConfirmModal } from "./components/ConfirmModal.js";
 import { personaFromId, personaId, usePersona } from "./persona.js";
 import { TABS, hashOf, resolveRoute, type Role, type Route } from "./routes.js";
+import { History } from "./screens/History.js";
+import { InvoiceDetail } from "./screens/InvoiceDetail.js";
+import { Policy } from "./screens/Policy.js";
+import { PurchaseOrders } from "./screens/PurchaseOrders.js";
 import { Queue } from "./screens/Queue.js";
 import { errorMessage, runTool } from "./tools.js";
 import type { Data, EventRow, InvoiceRow, PORow, ReviewRow } from "./types.js";
@@ -24,6 +28,14 @@ function useHashRoute(role: Role): Route {
 
 function Screen({ route, data }: { route: Route; data: Data }) {
   switch (route.name) {
+    case "invoice":
+      return <InvoiceDetail id={route.id} data={data} />;
+    case "purchase-orders":
+      return <PurchaseOrders data={data} />;
+    case "history":
+      return <History data={data} />;
+    case "policy":
+      return <Policy />;
     default:
       return <Queue data={data} />;
   }

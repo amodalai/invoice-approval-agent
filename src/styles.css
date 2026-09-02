@@ -493,3 +493,168 @@ section h2 {
   margin-left: 10px;
   padding: 3px 10px;
 }
+
+.card {
+  margin-top: 16px;
+  padding: 16px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.card h3 {
+  margin: 0 0 10px;
+  font-size: 14px;
+}
+
+.card .grid {
+  margin-top: 8px;
+}
+
+.grid--compact th,
+.grid--compact td {
+  padding: 7px 10px;
+}
+
+.check-name {
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.pill.check-pass {
+  background: #e3f3ea;
+  color: #1f5c4a;
+}
+
+.pill.check-flag {
+  background: #fdf3dc;
+  color: #8a6300;
+}
+
+.pill.check-fail {
+  background: #fce8e6;
+  color: #8c1d18;
+}
+
+.fields {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 16px;
+  margin: 0;
+  font-size: 13px;
+}
+
+.fields dt {
+  color: var(--muted);
+  font-weight: 600;
+}
+
+.fields dd {
+  margin: 0;
+}
+
+.review p {
+  margin: 0 0 8px;
+}
+
+.actions {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 6px;
+}
+
+.actions .decide {
+  justify-content: flex-start;
+}
+
+.timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.timeline li {
+  padding: 8px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.timeline li:last-child {
+  border-bottom: none;
+}
+
+.timeline__head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.timeline__when {
+  color: var(--muted);
+  font-size: 12px;
+  min-width: 12ch;
+}
+
+.timeline__review {
+  margin-top: 6px;
+  font-size: 13px;
+}
+
+.timeline__review summary {
+  cursor: pointer;
+  color: var(--accent);
+}
+
+.plain-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.plain-list li + li {
+  margin-top: 4px;
+}
+
+.grid a,
+.empty a {
+  color: var(--accent);
+}
+
+.nowrap {
+  white-space: nowrap;
+}
+
+.filter {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  min-width: 24ch;
+}
+
+.chips {
+  display: flex;
+  gap: 6px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.chip {
+  font: inherit;
+  font-size: 12.5px;
+  padding: 4px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.chip.active {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: var(--accent-ink);
+}
