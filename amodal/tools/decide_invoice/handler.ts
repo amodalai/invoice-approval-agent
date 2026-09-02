@@ -3,7 +3,6 @@ import {
   approvalBlockers,
   checkInvoice,
   loadInvoice,
-  reviewKey,
   storeGetResult,
 } from "../../_lib/invoice-review.js";
 
@@ -53,7 +52,9 @@ export default async function decide_invoice(params: DecideInvoiceParams, ctx: C
   if (invoice.status === "approved" || invoice.status === "rejected") {
     throw new Error(`Invoice ${invoice_id} is already ${invoice.status}.`);
   }
-  const review = storeGetResult(await callTool("store__reviews__get", { key: reviewKey(invoice_id) }));
+  const review = invoice.review_id
+    ? storeGetResult(await callTool("store__reviews__get", { key: invoice.review_id }))
+    : undefined;
   if (!review) throw new Error(`No review for ${invoice_id}. Review it before deciding.`);
 
   if (decision === "approved") {

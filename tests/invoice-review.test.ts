@@ -90,7 +90,7 @@ function fakeDeps(store: Map<string, Record<string, unknown>>, reviewerReply: st
     deps: {
       async callTool(name: string, args: Record<string, unknown>) {
         calls.push([name, args]);
-        const m = /^store__(\w+)__(get|set|query)$/.exec(name)!;
+        const m = /^store__(\w+)__(get|set|query|list|remove)$/.exec(name)!;
         const key = (k: string) => `${m[1]}:${k}`;
         if (m[2] === "get") return store.get(key(String(args.key))) ?? { error: "not found" };
         if (m[2] === "set") {
@@ -130,12 +130,49 @@ test("on fresh stores the review seeds the dataset and reviews the in-memory exa
   const out = await runInvoiceReview("inv_brightline_0417", deps);
   assert.equal(out.found, true);
   assert.equal(out.recommendation, "approve");
-  assert.equal(out.review_id, "rev_inv_brightline_0417");
+  const review_id = `rev_inv_brightline_0417_1_${Date.parse(NOW)}`;
+  assert.equal(out.review_id, review_id);
   assert.ok(calls.some(([n, a]) => n === "store__invoices__set" && a.key === "inv_pixelforge_77"), "seeded the dataset");
   const saved = store.get("invoices:inv_brightline_0417")!;
   assert.equal(saved.status, "reviewed");
   assert.equal(saved.recommendation, "approve");
-  assert.equal(store.get("reviews:rev_inv_brightline_0417")!.reviewer_session_id, "sess");
+  assert.equal(saved.review_id, review_id);
+  assert.equal(saved.reviewed_at, NOW);
+  const review = store.get(`reviews:${review_id}`)!;
+  assert.equal(review.reviewer_session_id, "sess");
+  assert.equal(review.revision, 1);
+});
+
+test("every run keeps its own review row, the invoice names the latest, and a reviewed event is appended", async () => {
+  const store = new Map<string, Record<string, unknown>>();
+  for (const p of PURCHASE_ORDERS) store.set(`purchase_orders:${p.po_number}`, poRow(p, NOW));
+  for (const i of INVOICES) store.set(`invoices:${i.invoice_id}`, invoiceRow(i, NOW));
+  let t = Date.parse(NOW);
+  const { deps } = fakeDeps(store, REPLY);
+  deps.now = () => new Date(t);
+  const first = await runInvoiceReview("inv_norwood_2288", deps);
+  t += 60_000;
+  const second = await runInvoiceReview("inv_norwood_2288", deps);
+  assert.notEqual(first.review_id, second.review_id);
+  assert.ok(store.has(`reviews:${first.review_id}`) && store.has(`reviews:${second.review_id}`));
+  assert.equal(store.get("invoices:inv_norwood_2288")!.review_id, second.review_id);
+  const events = [...store.entries()].filter(([k]) => k.startsWith("events:")).map(([, v]) => v);
+  assert.equal(events.length, 2);
+  assert.deepEqual(
+    events.map((e) => [e.kind, e.actor, e.recommendation, e.revision, e.invoice_id]),
+    [["reviewed", "agent", "escalate", 1, "inv_norwood_2288"], ["reviewed", "agent", "escalate", 1, "inv_norwood_2288"]],
+  );
+});
+
+test("a preloaded invoice is reviewed without reading the stores", async () => {
+  const store = new Map<string, Record<string, unknown>>();
+  const { deps, calls } = fakeDeps(store, REPLY);
+  const invoice = { ...inv("inv_pixelforge_77"), revision: 2 };
+  const out = await runInvoiceReview("inv_pixelforge_77", deps, { invoice, others: [] });
+  assert.equal(out.recommendation, "approve");
+  assert.ok(!calls.some(([n]) => n.endsWith("__get") || n.endsWith("__query")));
+  assert.equal(store.get(`reviews:${out.review_id}`)!.revision, 2);
+  assert.equal(store.get("invoices:inv_pixelforge_77")!.status, "reviewed");
 });
 
 test("code clamps an approve the facts forbid and folds the blockers into the issues", async () => {

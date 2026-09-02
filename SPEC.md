@@ -55,7 +55,8 @@ demo" button.
   chat detour through `runChatCommand` goes away. The `review <id>` and
   `seed` regex triggers stay for chat and for the evals.
 - **Store tools** are `store__<name>__get`, `__set`, `__query`, `__list`, and
-  `__remove`. Reset uses `__list` and `__remove`.
+  `__remove`. `__remove` is registered only for a store whose JSON declares
+  `"deletable": true`; all four stores do. Reset uses `__list` and `__remove`.
 
 ## Personas and identity
 
@@ -291,8 +292,8 @@ their review rows and events. Shape:
 - About seven `approved` invoices across the three requesters, some against
   the backlog POs, some no-PO under $1,000.
 - One `rejected` duplicate.
-- One returned, resubmitted at revision 2, then approved: two reviews, five
-  events.
+- One returned, resubmitted at revision 2, then approved: two reviews, six
+  events (submitted, reviewed, returned, resubmitted, reviewed, approved).
 - One `rejected` after an `escalate` recommendation, with a note.
 
 Constraints, each pinned by a test in `tests/demo-data.test.ts`:

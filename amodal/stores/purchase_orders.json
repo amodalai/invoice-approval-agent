@@ -12,5 +12,6 @@
     "created_at": { "type": "datetime" }
   },
   "indexed": ["vendor_name", "status"],
+  "deletable": true,
   "_comment_purpose": "An approved purchase order: what the company agreed to buy, from whom, for how much. review_invoice matches an invoice to its PO by `po_number` and compares the invoice total to the remaining balance (`amount_usd` - `billed_to_date_usd`). decide_invoice adds an approved invoice's total to `billed_to_date_usd`. `description` is the scope the invoice-reviewer subagent judges line items against."
 }

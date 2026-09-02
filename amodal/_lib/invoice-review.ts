@@ -1,4 +1,5 @@
 import { INVOICES, PURCHASE_ORDERS, ensureExamplesSeeded, invoiceRow, poRow } from "./demo-data.js";
+import { appendEvent } from "./events.js";
 import { invoiceMath, type InvoiceMath, type LineItem } from "./policy.js";
 
 export interface InvoiceRow {
@@ -11,8 +12,14 @@ export interface InvoiceRow {
   total_usd: number;
   line_items: LineItem[];
   notes?: string | null;
+  requester?: string;
+  revision?: number;
   status?: string;
+  recommendation?: Recommendation | null;
+  review_id?: string | null;
+  returned_note?: string | null;
   received_at: string;
+  submitted_at?: string;
   [k: string]: unknown;
 }
 
@@ -58,8 +65,9 @@ export interface Facts {
 
 export const REVIEWER_SUBAGENT = "invoice-reviewer";
 
-export function reviewKey(invoice_id: string): string {
-  return `rev_${invoice_id}`;
+/** One row per run: a re-review or a resubmission keeps the earlier reviews. */
+export function reviewKey(invoice_id: string, revision: number, createdAt: Date): string {
+  return `rev_${invoice_id}_${revision}_${createdAt.getTime()}`;
 }
 
 const norm = (s: unknown) => String(s ?? "").trim().toLowerCase();
@@ -188,6 +196,7 @@ export interface ReviewDeps {
    *  so the caller loads the policy and passes it in as input. */
   loadPolicy(): Promise<string>;
   now(): Date;
+  random?(): number;
   sessionId: string;
   /** Optional reasoning-trace sink (ctx.emitReasoning). */
   trace?(line: string): void;
@@ -205,6 +214,12 @@ export interface ReviewOutcome {
   review_id?: string;
 }
 
+export interface LoadedInvoice {
+  invoice: InvoiceRow;
+  po?: PORow;
+  others: InvoiceRow[];
+}
+
 /**
  * Load an invoice with its purchase order and the vendor's other invoices.
  * On fresh stores the demo invoice is taken from the dataset and the stores
@@ -214,7 +229,7 @@ export interface ReviewOutcome {
 export async function loadInvoice(
   invoice_id: string,
   deps: Pick<ReviewDeps, "callTool" | "now" | "trace">,
-): Promise<{ invoice: InvoiceRow; po?: PORow; others: InvoiceRow[] } | undefined> {
+): Promise<LoadedInvoice | undefined> {
   const invoice = storeGetResult<InvoiceRow>(
     await deps.callTool("store__invoices__get", { key: invoice_id }),
   );
@@ -244,15 +259,24 @@ export async function loadInvoice(
   };
 }
 
-export async function runInvoiceReview(invoice_id: string, deps: ReviewDeps): Promise<ReviewOutcome> {
-  const loaded = await loadInvoice(invoice_id, deps);
+/**
+ * Review one invoice revision. `preloaded` is for a caller that already
+ * holds the rows (submit_invoice reviews the row it just wrote, which a run
+ * cannot read back); otherwise the rows come from the stores.
+ */
+export async function runInvoiceReview(
+  invoice_id: string,
+  deps: ReviewDeps,
+  preloaded?: LoadedInvoice,
+): Promise<ReviewOutcome> {
+  const loaded = preloaded ?? (await loadInvoice(invoice_id, deps));
   if (!loaded) return { found: false, invoice_id };
   const { invoice, po, others } = loaded;
 
   deps.trace?.(
     `Loaded ${invoice.vendor_name} #${invoice.invoice_number} for $${invoice.total_usd.toLocaleString("en-US")}: ` +
       (po ? `PO ${po.po_number} (${po.status}), ` : "no purchase order, ") +
-      `${others.length - 1} other invoice(s) from this vendor.`,
+      `${others.filter((o) => o.invoice_id !== invoice_id).length} other invoice(s) from this vendor.`,
   );
 
   const facts = checkInvoice(invoice, po, others);
@@ -313,13 +337,16 @@ export async function runInvoiceReview(invoice_id: string, deps: ReviewDeps): Pr
   }
   const issues = Array.from(new Set([...blockers, ...review.issues]));
 
-  const nowIso = deps.now().toISOString();
-  const review_id = reviewKey(invoice_id);
+  const now = deps.now();
+  const nowIso = now.toISOString();
+  const revision = invoice.revision ?? 1;
+  const review_id = reviewKey(invoice_id, revision, now);
   await deps.callTool("store__reviews__set", {
     key: review_id,
     value: {
       review_id,
       invoice_id,
+      revision,
       recommendation,
       summary: review.summary,
       checks: review.checks,
@@ -330,8 +357,9 @@ export async function runInvoiceReview(invoice_id: string, deps: ReviewDeps): Pr
   });
   await deps.callTool("store__invoices__set", {
     key: invoice_id,
-    value: { ...invoice, status: "reviewed", recommendation, reviewed_at: nowIso },
+    value: { ...invoice, status: "reviewed", recommendation, review_id, reviewed_at: nowIso },
   });
+  await appendEvent(deps, { invoice_id, kind: "reviewed", actor: "agent", recommendation, revision });
   deps.trace?.(`Saved \`${review_id}\` (${recommendation}) and stamped the invoice.`);
 
   return {

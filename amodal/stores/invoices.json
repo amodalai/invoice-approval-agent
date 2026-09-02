@@ -21,29 +21,36 @@
       }
     },
     "notes": { "type": "string", "nullable": true },
+    "requester": { "type": "string" },
+    "revision": { "type": "number" },
     "status": {
       "type": "enum",
-      "values": ["new", "reviewed", "approved", "rejected"]
+      "values": ["new", "reviewed", "approved", "rejected", "returned"]
     },
     "recommendation": {
       "type": "enum",
       "values": ["approve", "hold", "escalate", "reject"],
       "nullable": true
     },
+    "review_id": { "type": "string", "nullable": true },
     "reviewed_at": { "type": "datetime", "nullable": true },
     "decided_at": { "type": "datetime", "nullable": true },
     "decision_note": { "type": "string", "nullable": true },
+    "returned_note": { "type": "string", "nullable": true },
     "received_at": { "type": "datetime" },
+    "submitted_at": { "type": "datetime" },
     "created_at": { "type": "datetime" }
   },
   "indexed": [
     "vendor_name",
     "invoice_number",
     "po_number",
+    "requester",
     "status",
     "recommendation",
     "received_at",
     "created_at"
   ],
-  "_comment_purpose": "A vendor invoice waiting for payment approval. review_invoice reads the row plus its purchase order and the vendor's other invoices, checks it against the spend policy, and writes the model's `recommendation` back. `status` is the human-owned lane (new -> reviewed -> approved | rejected): the reviewer only advances it to `reviewed`; `approved` and `rejected` are written by decide_invoice from the operator's click. `line_items` are inline so a demo invoice is one row. No payment fields by design: the example recommends a decision, it never moves money."
+  "deletable": true,
+  "_comment_purpose": "A vendor invoice waiting for payment approval, submitted by a requester (`requester`, as `Name (Team)`) or seeded. review_invoice reads the row plus its purchase order and the vendor's other invoices, checks it against the spend policy, and writes the clamped `recommendation` and the `review_id` of the review for the current `revision`. `status` is the human-owned lane (new -> reviewed -> approved | rejected; reviewed -> returned -> new on resubmit, revision + 1): the reviewer only advances it to `reviewed`; `approved`, `rejected`, and `returned` (with `returned_note`) are written by decide_invoice from the approver's click. `received_at` is when the invoice first arrived; `submitted_at` is when the current revision was submitted. `line_items` are inline so a demo invoice is one row. No payment fields by design: the example recommends a decision, it never moves money."
 }

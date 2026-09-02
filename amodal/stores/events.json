@@ -1,0 +1,24 @@
+{
+  "name": "events",
+  "key": "{event_id}",
+  "schema": {
+    "event_id": { "type": "string" },
+    "invoice_id": { "type": "string", "nullable": true },
+    "kind": {
+      "type": "enum",
+      "values": ["seeded", "submitted", "resubmitted", "reviewed", "returned", "approved", "rejected", "reset"]
+    },
+    "actor": { "type": "string" },
+    "recommendation": {
+      "type": "enum",
+      "values": ["approve", "hold", "escalate", "reject"],
+      "nullable": true
+    },
+    "note": { "type": "string", "nullable": true },
+    "revision": { "type": "number", "nullable": true },
+    "created_at": { "type": "datetime" }
+  },
+  "indexed": ["invoice_id", "kind", "actor", "created_at"],
+  "deletable": true,
+  "_comment_purpose": "One row per action on an invoice, appended by the tool that made it in the same run: submit_invoice (`submitted`, `resubmitted`, actor the requester), review_invoice (`reviewed`, actor `agent`, with the clamped `recommendation`), decide_invoice (`approved`, `rejected`, `returned`, actor `approver`, with the operator's `note`), and the seed and reset (`seeded`, `reset`, actor `system`; `reset` has no invoice). `revision` is the invoice revision the event belongs to. The chat agent reads this store to answer history questions; the UI renders it as the History tab and the invoice timeline. Rows are never edited."
+}

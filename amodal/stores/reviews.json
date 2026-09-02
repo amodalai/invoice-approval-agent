@@ -4,6 +4,7 @@
   "schema": {
     "review_id": { "type": "string" },
     "invoice_id": { "type": "string" },
+    "revision": { "type": "number" },
     "recommendation": {
       "type": "enum",
       "values": ["approve", "hold", "escalate", "reject"]
@@ -15,5 +16,6 @@
     "created_at": { "type": "datetime" }
   },
   "indexed": ["invoice_id", "recommendation", "created_at"],
-  "_comment_purpose": "The agent's structured review of one invoice, written by review_invoice. One row per invoice (keyed rev_{invoice_id}, so a re-review overwrites). `checks` are the review items ({name: purchase-order|amount|line-items|duplicate, status: pass|flag|fail, note}); `issues` is the plain-language list of what must be resolved before payment."
+  "deletable": true,
+  "_comment_purpose": "The agent's structured review of one invoice revision, written by review_invoice (or seeded, with reviewer_session_id `seed`). One row per run, keyed rev_{invoice_id}_{revision}_{created_at ms}, so a re-review or a resubmission keeps the earlier rows; the invoice's `review_id` names the latest. `checks` are the review items ({name: purchase-order|amount|line-items|duplicate, status: pass|flag|fail, note}); `issues` is the plain-language list of what must be resolved before payment."
 }

@@ -1,4 +1,13 @@
-import { INVOICES, PURCHASE_ORDERS, type ExampleInvoice, type ExamplePO } from "./examples.js";
+import {
+  BACKLOG,
+  BACKLOG_PURCHASE_ORDERS,
+  INVOICES,
+  PURCHASE_ORDERS,
+  type ExampleInvoice,
+  type ExamplePO,
+} from "./examples.js";
+import { eventRow, type EventInput, type EventRow } from "./events.js";
+import { reviewKey } from "./invoice-review.js";
 
 export { INVOICES, PURCHASE_ORDERS };
 
@@ -9,13 +18,17 @@ interface SeedCtx {
 
 /** The demo's clock: invoices "arrived" over the days before this date. */
 const DEMO_NOW = "2026-09-01T09:00:00.000Z";
+const HOUR = 3_600_000;
+const DAY = 24 * HOUR;
 
 export const NEW_INVOICE_DEFAULTS = {
   status: "new" as const,
   recommendation: null,
+  review_id: null,
   reviewed_at: null,
   decided_at: null,
   decision_note: null,
+  returned_note: null,
 };
 
 export function poRow(po: ExamplePO, nowIso: string) {
@@ -44,44 +57,106 @@ export function invoiceRow(inv: ExampleInvoice, nowIso: string) {
     total_usd: inv.total_usd,
     line_items: inv.line_items,
     notes: inv.notes ?? null,
+    requester: inv.requester,
+    revision: 1,
     ...NEW_INVOICE_DEFAULTS,
     received_at: received.toISOString(),
+    submitted_at: received.toISOString(),
     created_at: nowIso,
   };
 }
 
 /**
- * Write every demo purchase order and invoice that is not already in the
- * stores. Idempotent per row, so `seed` is safe to resend. Returns how many
- * invoices were written.
+ * The backlog in its final state: each invoice with one review per revision
+ * and its events (submitted, reviewed, then returned and resubmitted for
+ * every revision but the last, then the decision), timed from `received_at`.
  */
-export async function ensureExamplesSeeded(ctx: SeedCtx): Promise<number> {
-  const nowIso = (ctx.now ? ctx.now() : new Date()).toISOString();
-  const keys = async (store: string, field: string) => {
-    const q = (await ctx.callTool(`store__${store}__query`, { limit: 1000 })) as {
-      documents?: Array<{ payload: Record<string, unknown> }>;
-    };
-    return new Set((q.documents ?? []).map((d) => d.payload[field]));
-  };
-
-  const pos = await keys("purchase_orders", "po_number");
-  for (const po of PURCHASE_ORDERS) {
-    if (pos.has(po.po_number)) continue;
-    await ctx.callTool("store__purchase_orders__set", {
-      key: po.po_number,
-      value: poRow(po, nowIso),
+function backlogRows(nowIso: string) {
+  const invoices: Array<Record<string, unknown>> = [];
+  const reviews: Array<Record<string, unknown>> = [];
+  const events: EventRow[] = [];
+  for (const inv of BACKLOG) {
+    const base = invoiceRow(inv, nowIso);
+    const received = Date.parse(base.received_at);
+    const event = (e: EventInput, at: Date) =>
+      events.push(eventRow({ invoice_id: inv.invoice_id, ...e }, at, `${inv.invoice_id}_${events.length}`));
+    const last = inv.reviews.length - 1;
+    let latest = { review_id: "", reviewed_at: "", submitted_at: "", decided_at: "" };
+    inv.reviews.forEach((r, i) => {
+      const revision = i + 1;
+      const submitted = new Date(received + i * 3 * DAY);
+      const reviewed = new Date(submitted.getTime() + HOUR);
+      const decided = new Date(submitted.getTime() + DAY);
+      const review_id = reviewKey(inv.invoice_id, revision, reviewed);
+      event({ kind: i === 0 ? "submitted" : "resubmitted", actor: inv.requester, revision }, submitted);
+      reviews.push({ review_id, invoice_id: inv.invoice_id, revision, ...r, reviewer_session_id: "seed", created_at: reviewed.toISOString() });
+      event({ kind: "reviewed", actor: "agent", recommendation: r.recommendation, revision }, reviewed);
+      event(
+        i === last
+          ? { kind: inv.decided, actor: "approver", note: inv.decision_note, revision }
+          : { kind: "returned", actor: "approver", note: inv.returned_note, revision },
+        decided,
+      );
+      latest = {
+        review_id,
+        reviewed_at: reviewed.toISOString(),
+        submitted_at: submitted.toISOString(),
+        decided_at: decided.toISOString(),
+      };
+    });
+    invoices.push({
+      ...base,
+      ...latest,
+      revision: inv.reviews.length,
+      status: inv.decided,
+      recommendation: inv.reviews[last].recommendation,
+      decision_note: inv.decision_note ?? null,
     });
   }
+  return { invoices, reviews, events };
+}
 
-  const invoices = await keys("invoices", "invoice_id");
+/** Every row the seed writes, per store, with the field that is the store key. */
+export function seedRows(nowIso: string) {
+  const backlog = backlogRows(nowIso);
+  const live = INVOICES.map((i) => invoiceRow(i, nowIso));
+  return [
+    { store: "purchase_orders", field: "po_number", rows: [...PURCHASE_ORDERS, ...BACKLOG_PURCHASE_ORDERS].map((p) => poRow(p, nowIso)) },
+    { store: "invoices", field: "invoice_id", rows: [...backlog.invoices, ...live] },
+    { store: "reviews", field: "review_id", rows: backlog.reviews },
+    {
+      store: "events",
+      field: "event_id",
+      rows: [
+        ...backlog.events,
+        ...live.map((i) => eventRow({ invoice_id: i.invoice_id, kind: "seeded", actor: "system", revision: 1 }, new Date(i.received_at), `${i.invoice_id}_0`)),
+      ],
+    },
+  ] as Array<{ store: string; field: string; rows: Array<Record<string, unknown>> }>;
+}
+
+/**
+ * Write every demo purchase order, invoice, review, and event that is not
+ * already in the stores. Idempotent per row, so `seed` is safe to resend.
+ * `assumeEmpty` skips the lookups: reset_demo removes every row first and
+ * cannot read back its own removes. Returns how many invoices were written.
+ */
+export async function ensureExamplesSeeded(ctx: SeedCtx, opts: { assumeEmpty?: boolean } = {}): Promise<number> {
+  const nowIso = (ctx.now ? ctx.now() : new Date()).toISOString();
   let seeded = 0;
-  for (const inv of INVOICES) {
-    if (invoices.has(inv.invoice_id)) continue;
-    seeded += 1;
-    await ctx.callTool("store__invoices__set", {
-      key: inv.invoice_id,
-      value: invoiceRow(inv, nowIso),
-    });
+  for (const { store, field, rows } of seedRows(nowIso)) {
+    const present = new Set<unknown>();
+    if (!opts.assumeEmpty) {
+      const q = (await ctx.callTool(`store__${store}__query`, { limit: 1000 })) as {
+        documents?: Array<{ payload: Record<string, unknown> }>;
+      };
+      for (const d of q.documents ?? []) present.add(d.payload[field]);
+    }
+    for (const row of rows) {
+      if (present.has(row[field])) continue;
+      if (store === "invoices") seeded += 1;
+      await ctx.callTool(`store__${store}__set`, { key: row[field], value: row });
+    }
   }
   return seeded;
 }
