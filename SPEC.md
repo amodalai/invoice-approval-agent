@@ -1,8 +1,7 @@
 # Invoice Approval: specification
 
-Status: proposed (2026-09-02). This document describes the target app. The
-repository as it stands is the starting point; the "Today" notes say what
-changes.
+What the app does, how its stores, tools, and screens fit together, and why
+each choice was made.
 
 ## What this app is
 
@@ -29,8 +28,8 @@ demo" button.
 | Personas | Requester and approver, switched in the header, no auth | The runtime gives the custom UI no user identity. A switch keeps the demo self-contained. |
 | What a requester submits | An invoice, with or without a purchase order | The data model and the policy already cover it. No new rules. |
 | Review timing | On submit, in the same tool run | The requester sees a result without anyone pressing a button. |
-| Lifecycle | Approver can return an invoice; requester edits and resubmits | Gives `hold` a human path. One new status, one new decision value. |
-| History | An `events` store, one row per action, and one review row per run | Re-reviews and returns are kept. Reviews stop overwriting each other. |
+| Lifecycle | Approver can return an invoice; requester edits and resubmits | Gives `hold` a human path, at the cost of one status and one decision value. |
+| History | An `events` store, one row per action, and one review row per run | Re-reviews and returns are kept. Reviews do not overwrite each other. |
 | Seed | Five pinned live invoices plus a decided backlog, seeded on first open | History, purchase-order balances, and the requester's list are populated at first open. The evals keep their five cases. |
 | Policy | Read-only in the UI | The guard hook, `policy.ts`, and the reviewer prompt all carry the thresholds. A runtime edit would let them drift. |
 | Escalate | The approver decides, note required | No third persona. Hard rules still block in code and in the hook. |
@@ -46,19 +45,18 @@ demo" button.
   launch" is the UI seeding on first mount when the stores are empty. A cron
   trigger would run forever for a one-time job, and a `preInput` hook only
   fires on chat.
-- **A run cannot read back its own writes.** `loadInvoice` already works
-  around this for seeding. `submit_invoice` therefore reviews the row it
-  holds in memory instead of re-reading it, and `runInvoiceReview` accepts a
-  preloaded invoice.
-- **The invoke lane exists.** `useToolRun` posts to `/api/tools/<name>/run`
-  for any tool with an `invoke` trigger and `execution: "durable"`; the lane
-  refuses a non-durable tool. Durable tools still run from chat: a regex
-  trigger executes the handler with the same composite context. Reviews and
-  seeding move to the lane; the chat detour through `runChatCommand` goes
-  away. The `review <id>` and `seed` regex triggers stay for chat and for the
-  evals. A run's result is `{ sessionId, outcome, result }`; a thrown handler
-  error resolves with `outcome.kind: "failed"` and the message in
-  `outcome.reason`, so the UI reads the outcome instead of catching.
+- **A run cannot read back its own writes.** `loadInvoice` works around this
+  for seeding. `submit_invoice` therefore reviews the row it holds in memory
+  instead of re-reading it, and `runInvoiceReview` accepts a preloaded
+  invoice.
+- **The invoke lane.** `useToolRun` posts to `/api/tools/<name>/run` for any
+  tool with an `invoke` trigger and `execution: "durable"`; the lane refuses
+  a non-durable tool. Durable tools also run from chat: a regex trigger
+  executes the handler with the same composite context, which is what the
+  `review <id>` and `seed` commands use. A run's result is
+  `{ sessionId, outcome, result }`; a thrown handler error resolves with
+  `outcome.kind: "failed"` and the message in `outcome.reason`, so the UI
+  reads the outcome instead of catching.
 - **Store tools** are `store__<name>__get`, `__set`, `__query`, `__list`, and
   `__remove`. `__remove` is registered only for a store whose JSON declares
   `"deletable": true`; all four stores do. Reset uses `__list` and `__remove`.
@@ -75,8 +73,8 @@ The header carries the app name, a persona switch, and an overflow menu.
   `requester`, and filters My invoices.
 
 The overflow menu holds **Reset demo data**. The chat widget floats on every
-tab for both personas; the guard hook and the agent prompt already keep chat
-from approving or paying anything.
+tab for both personas; the guard hook and the agent prompt keep chat from
+approving or paying anything.
 
 ## Navigation
 
@@ -124,39 +122,42 @@ Rules the tools enforce:
 - Approving an invoice whose latest recommendation is `escalate` requires a
   note.
 - The hard rules (`approvalBlockers`) block an approval in `decide_invoice`
-  and in the `approval-guard` hook, unchanged.
+  and in the `approval-guard` hook.
 - Only a `returned` invoice can be resubmitted, and only by its requester.
 
 ## Data model
 
-### `invoices` (changed)
+### `invoices`
 
-Added fields:
+The vendor invoice as submitted (vendor, number, PO, dates, total, line
+items, notes), plus the fields the lifecycle owns:
 
 | Field | Type | Meaning |
 | --- | --- | --- |
 | `requester` | string | The person who requested the work, `Name (Team)`. |
 | `revision` | number | 1 on submit, +1 on each resubmit. |
+| `status` | enum | `new`, `reviewed`, `approved`, `rejected`, `returned`. |
 | `review_id` | string, nullable | The review for the current revision. |
+| `recommendation` | enum, nullable | The clamped recommendation of that review. |
 | `returned_note` | string, nullable | The approver's note from the latest return. |
+| `decision_note` | string, nullable | The approver's note on the decision. |
+| `received_at` | datetime | When the invoice first arrived. |
 | `submitted_at` | datetime | When this revision was submitted. |
+| `reviewed_at`, `decided_at` | datetime, nullable | When the review and the decision landed. |
 
-`status` gains `returned`. `reviewed_at`, `decided_at`, `decision_note`,
-`recommendation`, and `received_at` stay.
+### `purchase_orders`
 
-Today: no `requester`, one review per invoice, no `returned`.
+`po_number`, `vendor_name`, `description`, `amount_usd`,
+`billed_to_date_usd`, `requester`, and `status` (`open` or `closed`).
+`decide_invoice` adds an approved invoice's total to `billed_to_date_usd`.
 
-### `purchase_orders` (unchanged)
+### `reviews`
 
-### `reviews` (changed)
+Keyed `rev_{invoice_id}_{revision}_{created_at ms}`, so every run keeps its
+row. `revision` names the invoice revision reviewed; the invoice's
+`review_id` names the latest row.
 
-Key becomes `rev_{invoice_id}_{revision}_{created_at ms}` so every run keeps
-its row. Added field `revision` (number). The invoice's `review_id` names the
-latest one.
-
-Today: keyed `rev_{invoice_id}`, so a re-review overwrites.
-
-### `events` (new)
+### `events`
 
 | Field | Type | Meaning |
 | --- | --- | --- |
@@ -181,14 +182,14 @@ to Atlas's invoice?" is answerable from the store.
 
 ## Tools
 
-| Tool | Triggers | Lane | Change |
+| Tool | Triggers | Lane | What it does |
 | --- | --- | --- | --- |
-| `seed_examples` | `seed` regex, `invoke` | durable | Loads the extended dataset, including reviews and events. Idempotent per row. |
-| `submit_invoice` | `invoke` | durable | New. Validates, writes the row, appends the event, reviews the in-memory row. |
-| `review_invoice` | `review <id>` regex, `invoke` | durable | Writes a new review row per run, stamps `review_id`, appends `reviewed`. |
-| `decide_invoice` | `invoke` | durable | `decision` gains `returned`. Note rules. Appends the event. |
-| `reset_demo` | `invoke` | durable | New. Removes every row in the four stores, then seeds. Appends `reset`. |
-| `invoice_math` | | | Unchanged. |
+| `seed_examples` | `seed` regex, `invoke` | durable | Loads the demo dataset, reviews and events included. Idempotent per row. |
+| `submit_invoice` | `invoke` | durable | Validates, writes the row, appends the event, reviews the in-memory row. |
+| `review_invoice` | `review <id>` regex, `invoke` | durable | Writes one review row per run, stamps `review_id`, appends `reviewed`. |
+| `decide_invoice` | `invoke` | durable | Records `approved`, `rejected`, or `returned` under the note rules. Appends the event. |
+| `reset_demo` | `invoke` | durable | Removes every row in the four stores, then seeds. Appends `reset`. |
+| `invoice_math` | | | Line sums, PO balances, variance, and tolerance for the chat agent. Numbers only. |
 
 ### `submit_invoice`
 
@@ -226,24 +227,24 @@ Behavior:
    now (resubmission keeps the original `received_at`).
 5. Append `submitted` or `resubmitted`, actor the requester.
 6. Run the review on the in-memory row. The review writes its own row and
-   event, and the tool re-emits the invoice with `status: reviewed`,
-   `recommendation`, `review_id`, `reviewed_at`.
-7. Return `{ invoice_id, revision, recommendation, review_id }`. If the
-   review fails, the invoice stays `new` and the error is returned; the
-   approver's Review button retries it.
+   event, and stamps the invoice with `status: reviewed`, `recommendation`,
+   `review_id`, `reviewed_at`.
+7. Return `{ invoice_id, revision, recommendation, review_id }`. A failing
+   review leaves the invoice `new` and rethrows, so the form shows the error
+   and the approver's Review button retries it.
 
 The invoke lane does not validate `parameters`, so the handler validates
-everything itself, as `decide_invoice` does today.
+everything itself, as `decide_invoice` does.
 
 ### `review_invoice`
 
-`runInvoiceReview` gains an optional preloaded `{ invoice, po, others }`.
-The store-loading path stays for the chat trigger and the evals, including
-the self-seeding fallback on fresh stores. On completion it writes the
-review under the new key, re-emits the invoice with `status: reviewed`,
-`review_id`, `recommendation`, `reviewed_at`, and appends a `reviewed`
-event with actor `agent`. A re-review of a `reviewed` invoice is allowed and
-produces a new review row; the previous one stays in history.
+`runInvoiceReview` takes an optional preloaded `{ invoice, po, others }`.
+Without one it loads from the stores, which is the path the chat trigger and
+the evals take, including the self-seeding fallback on fresh stores. On
+completion it writes the review row, re-emits the invoice with
+`status: reviewed`, `review_id`, `recommendation`, `reviewed_at`, and appends
+a `reviewed` event with actor `agent`. A re-review of a `reviewed` invoice is
+allowed and produces another review row; the previous one stays in history.
 
 ### `decide_invoice`
 
@@ -252,8 +253,8 @@ reviewed` and a review at `invoice.review_id`.
 
 - `returned`: note required. Sets `status: returned`, `returned_note`,
   `decided_at: null`. Appends `returned`.
-- `approved`: blocked by `approvalBlockers` as today. Note required when the
-  review's recommendation is `escalate`. Adds the total to the PO's
+- `approved`: blocked by `approvalBlockers`. Note required when the review's
+  recommendation is `escalate`. Adds the total to the PO's
   `billed_to_date_usd`. Appends `approved`.
 - `rejected`: appends `rejected`.
 
@@ -269,22 +270,19 @@ agent's tools.
 
 ### Agent surfaces
 
-- `agents/default/agent.json`: tools unchanged (`review_invoice`,
-  `seed_examples`, `invoice_math`); stores gain `events: rw` (see the
-  `events` store above for why not `read`).
-- `agents/default/AGENT.md`: drop the "Load demo invoices" instruction; say
-  the data is loaded on first open; add that history questions are answered
-  from the events store; list the requesters.
-- `agents/invoice-reviewer`: unchanged.
-- `hooks/approval-guard`: unchanged in logic. It reads the invoice and its
-  PO from the stores, not the review, so the review key change does not
-  affect it.
+- `agents/default/agent.json`: tools `review_invoice`, `seed_examples`, and
+  `invoice_math`; all four stores as `rw` (see the `events` store above for
+  why the events grant is not `read`).
+- `agents/default/AGENT.md`: the data loads on first open, history questions
+  are answered from the events store, and the three requesters are named.
+- `agents/invoice-reviewer`: the policy judgment, called as a subagent.
+- `hooks/approval-guard`: reads the invoice and its PO from the stores, not
+  the review, and blocks an approval write that fails a hard rule.
 
 ## Seed dataset
 
-`amodal/_lib/examples.ts` keeps the three purchase orders and five live
-invoices exactly as they are (ids, amounts, offsets), with `requester` added
-to each live invoice:
+`amodal/_lib/examples.ts` holds three purchase orders and five live
+invoices, each live invoice carrying a `requester`:
 
 | Invoice | Requester |
 | --- | --- |
@@ -293,15 +291,15 @@ to each live invoice:
 | `inv_atlas_9911` | Omar Haddad (Engineering) |
 | `inv_pixelforge_77` | Maya Chen (Marketing) |
 
-It adds a **backlog**: two more purchase orders and about ten invoices dated
-over the six weeks before `DEMO_NOW`, each already reviewed and decided, with
-their review rows and events. Shape:
+It also holds a **backlog**: two more purchase orders and ten invoices dated
+over the six weeks before the live set, each already reviewed and decided,
+with their review rows and events. Shape:
 
 - Two purchase orders from vendors the live set does not use, one of them
   `closed`, both with `billed_to_date_usd` equal to the sum of their approved
   backlog invoices.
-- About seven `approved` invoices across the three requesters, some against
-  the backlog POs, some no-PO under $1,000.
+- Eight `approved` invoices across the three requesters, some against the
+  backlog POs, some no-PO under $1,000.
 - One `rejected` duplicate.
 - One returned, resubmitted at revision 2, then approved: two reviews, six
   events (submitted, reviewed, returned, resubmitted, reviewed, approved).
@@ -312,7 +310,11 @@ Constraints, each pinned by a test in `tests/demo-data.test.ts`:
 - The backlog never bills against PO-1041, PO-1052, or PO-1063 and never
   reuses a live invoice's vendor and number. The five review evals keep
   passing untouched.
-- Every PO's `billed_to_date_usd` equals the sum of its approved invoices.
+- Every invoice's lines add up to its total, names one of the three
+  requesters, and cites a purchase order that exists and shares its vendor.
+- Every PO's `billed_to_date_usd` equals the sum of its approved invoices,
+  and every seeded approval passes the guard hook's rules against those
+  balances.
 - Every backlog invoice has at least one review and at least three events
   (submitted, reviewed, decided), with timestamps in that order.
 - Seeded review rows are canned (`reviewer_session_id: "seed"`), written by
@@ -327,26 +329,26 @@ In `App.tsx`, once the `invoices` query has loaded and returned no rows, the
 app runs `seed_examples` through `useToolRun` and refetches. A ref prevents a
 second run under StrictMode; the tool is idempotent regardless. While it
 runs the page shows "Loading the demo…" in place of the tables. A failure
-shows a banner with a Retry button. The `seed` chat command keeps working
-for the evals and for anyone who empties the stores by hand.
+shows a banner with a Retry button. The `seed` chat command works for the
+evals and for anyone who empties the stores by hand.
 
 ## Screens
 
 ### Approver: Queue
 
-Today's table, limited to invoices whose status is `new`, `reviewed`, or
-`returned`, sorted by `received_at` descending. Columns: vendor and invoice
-number, requester, purchase order with remaining balance, total, due date,
-recommendation pill with the amount note, issues, actions.
+The invoices whose status is `new`, `reviewed`, or `returned`, sorted by
+`received_at` descending. Columns: vendor and invoice number, requester,
+purchase order with remaining balance, total, due date, recommendation pill
+with the amount note, issues, actions.
 
 Actions per row: **Review** (or Re-review), and on a `reviewed` row
 **Approve**, **Return**, **Reject**. Each opens the confirm modal. **Review
-all** in the header reviews every `new` row. A row's vendor cell links to
-the invoice detail.
+all** in the header reviews every `new` row. Reviews queue and run one at a
+time. A row's vendor cell links to the invoice detail.
 
-Recommendation pills: `approve` green, `hold` amber, `escalate` orange,
-`reject` red, `returned` grey with "Returned" text, `new` grey with "Not
-reviewed".
+The pill carries the recommendation (`approve`, `hold`, `escalate`,
+`reject`), or "Returned" on a returned invoice, or "Not reviewed" when there
+is no review yet.
 
 ### Approver: Invoice detail
 
@@ -357,23 +359,24 @@ Sections:
   table with line sum against stated total, notes.
 - **Latest review**: recommendation, summary, the four checks with status
   and note, issues.
-- **Actions**: the same buttons as the queue row, hidden once decided.
+- **Actions**: the same buttons as the queue row, replaced by the decision
+  note once decided.
 - **Timeline**: this invoice's events, newest first, with the review
-  recommendation on `reviewed` events and the note on decisions. Earlier
-  reviews expand inline.
+  recommendation on `reviewed` events and the note on decisions. Each review
+  expands inline.
 
 ### Approver: Purchase orders
 
-One card or row per PO: number, vendor, description, requester, status,
-amount, billed to date, remaining, and the list of invoices billed against
-it with their status. Sorted open first, then by number.
+One row per PO: number and description, vendor, requester, status, amount,
+billed to date, remaining, and the list of invoices billed against it with
+their status. Sorted open first, then by number.
 
 ### Approver: History
 
 The events store, newest first, with filter chips by kind (All, Submitted,
 Reviewed, Returned, Approved, Rejected, System) and a text filter on vendor
 or invoice id. Each row: time, actor, kind, invoice (linked), recommendation
-or note. Same idea as spectrum-strike's audit trail, without the CSV export.
+or note.
 
 ### Approver: Policy
 
@@ -381,7 +384,7 @@ or note. Same idea as spectrum-strike's audit trail, without the CSV export.
 thresholds table read from `policy.ts` (`no_po_limit_usd`, tolerance
 percentage and minimum, controller limit) so the page cannot disagree with
 the code. A line under the table says the hook enforces the hard rules for
-every writer and points at the file to edit.
+every writer and names the three files that carry the values.
 
 ### Requester: Submit
 
@@ -391,9 +394,9 @@ remove rows; description, quantity, unit price), total (computed from the
 lines, with an "enter a different total" toggle for the mismatch demo),
 notes. Requester is shown, not edited.
 
-Submit runs `submit_invoice`, shows the tool's progress steps while the
-review runs, then navigates to the invoice detail. Validation errors from
-the tool render under the form.
+Submit runs `submit_invoice`, holds the button at "Submitting and
+reviewing…" while the review runs, then navigates to the invoice detail.
+Validation errors from the tool render under the form.
 
 ### Requester: My invoices
 
@@ -406,13 +409,13 @@ an **Edit and resubmit** button. Rows link to the detail.
 The same invoice section as the approver's, with the status label instead
 of the recommendation. On `returned`: the note and the latest review's
 issues, and the form prefilled for resubmission. On `approved` or
-`rejected`: the approver's note. No checks, no recommendation, no earlier
-reviews.
+`rejected`: the approver's note. No checks, no recommendation, no timeline.
 
 ### Modals
 
-- **Decide**: today's modal with the note required for `returned` and for
-  approving an `escalate`. The copy says what the decision records.
+- **Decide**: one modal for the three decisions, with the note required for
+  `returned` and for approving an `escalate`. The copy says what the decision
+  records.
 - **Reset demo data**: "This deletes every invoice, purchase order, review,
   and event and reloads the demo. Continue?"
 
@@ -421,39 +424,41 @@ reviews.
 - Stores empty, seed running: "Loading the demo…".
 - Queue empty: "Nothing to review. Submit an invoice as a requester, or
   reset the demo."
-- My invoices empty: a link to Submit.
+- My invoices empty: "Nothing submitted yet." and a link to Submit.
 - History filtered to nothing: "No events match."
 
-## Code layout after the change
+## Code layout
 
 ```
 amodal/
-  stores/        invoices.json (changed), purchase_orders.json, reviews.json (changed), events.json (new)
+  stores/        invoices.json  purchase_orders.json  reviews.json  events.json
+  _types/
+    tool-context.ts         the runtime's tool context and definition types
   _lib/
-    policy.ts               unchanged
-    invoice-review.ts       preloaded input, new review key, reviewed event
-    submit.ts               validation, id generation, submit and resubmit flow
-    events.ts               appendEvent helper and the kind enum
-    examples.ts             live set with requesters, backlog set
-    demo-data.ts            seeds four stores
+    policy.ts               thresholds and the invoice arithmetic
+    invoice-review.ts       facts, the subagent call, the clamp, the review row, the reviewed event
+    submit.ts               validation, id generation, submit and resubmit
+    events.ts               appendEvent and the kind enum
+    reset.ts                empty the four stores, reseed blind, record the reset
+    examples.ts             the live set and the decided backlog
+    demo-data.ts            row builders and the idempotent seed over the four stores
   tools/
-    review_invoice/         invoke trigger added
-    seed_examples/          invoke trigger added
-    submit_invoice/         new
-    decide_invoice/         returned, note rules, events
-    reset_demo/             new
-    invoice-math/           unchanged
+    review_invoice/  seed_examples/  submit_invoice/  decide_invoice/  reset_demo/  invoice-math/
 src/
   main.tsx
-  App.tsx                   shell: header, persona, routes, auto-seed
+  App.tsx                   shell: header, persona, routes, auto-seed, reset
   routes.ts                 hash router hook and the per-persona route table
   persona.ts                localStorage persona
-  types.ts                  row types shared by the screens
+  tools.ts                  invoke-lane runner that rethrows a failed outcome
+  serial.ts                 one-at-a-time task queue
+  actions.tsx               the approver's review and decide actions, with the modal
+  types.ts                  row types and formatting shared by the screens
   screens/
     Queue.tsx  InvoiceDetail.tsx  PurchaseOrders.tsx  History.tsx  Policy.tsx
     Submit.tsx  MyInvoices.tsx
   components/
-    InvoiceTable.tsx  StatusPill.tsx  DecideModal.tsx  ConfirmModal.tsx  Timeline.tsx  LineItemsEditor.tsx
+    InvoiceTable.tsx  InvoiceActions.tsx  StatusPill.tsx  DecideModal.tsx  ConfirmModal.tsx
+    Timeline.tsx  ReviewBody.tsx  LineItemsEditor.tsx
   styles.css
 tests/
   policy.test.ts  invoice-review.test.ts  decide-invoice.test.ts  demo-data.test.ts  approval-guard.test.mjs
@@ -466,6 +471,8 @@ tests/
 
 Unit tests, `npm test`:
 
+- `policy.test.ts`: line sums to the cent, the null PO fields, tolerance as
+  the larger of the minimum and the percentage, the controller limit.
 - `submit.test.ts`: validation errors, id generation and collision suffix,
   resubmit requires `returned` and the same requester, revision increments,
   the review runs on the in-memory row (the store get is never called for
@@ -475,7 +482,11 @@ Unit tests, `npm test`:
   the note, each decision appends exactly one event.
 - `invoice-review.test.ts`: two reviews of the same invoice produce two
   rows, `review_id` points at the latest, the event carries the clamped
-  recommendation.
+  recommendation, a preloaded invoice reads no store.
+- `review-invoice-handler.test.ts`: the composite context reaches the review
+  flow, and the fresh-store seed uses only declared tools.
+- `events.test.ts`: `eventRow` is deterministic for a time and suffix, and
+  `appendEvent` writes one row with the nulls filled.
 - `demo-data.test.ts`: the invariants listed under Seed dataset, and that
   seeding twice writes nothing the second time.
 - `reset-demo.test.ts`: every store is emptied before the seed, one `reset`
@@ -484,13 +495,13 @@ Unit tests, `npm test`:
 - `serial.test.ts`: queued tasks run in order without overlapping, and a
   rejected one does not stop the next.
 - `types.test.ts`: `usd` shows the cents only when the amount has cents.
-- `approval-guard.test.mjs`: unchanged, plus one case proving the hook
-  ignores `store__events__set`.
+- `approval-guard.test.mjs`: the hook blocks a duplicate, an over-tolerance
+  approval, and a missing PO over the limit, and ignores other tools, other
+  points, and non-approval writes such as `store__events__set`.
 
 Evals, `amodal eval`:
 
-- The five `review-*` evals, `seed-demo-data`, and `never-pays` stay as
-  they are.
+- The five `review-*` evals, `seed-demo-data`, and `never-pays`.
 - `history-question.md`: "what happened to Atlas's invoice?" after a
   review; asserts the answer names the review and comes from the store.
 - `never-decides.md`: asking the chat to approve or return an invoice gets
@@ -499,25 +510,6 @@ Evals, `amodal eval`:
 Verification before each commit: `npm run typecheck`, `npm test`, and
 `amodal eval` for any change under `agents/`, `amodal/tools/`, or
 `amodal/knowledge/`.
-
-## Build order
-
-Each phase leaves the app working and is one or more commits.
-
-1. **Stores and library.** `events` store, invoice and review schema
-   changes, `events.ts`, `submit.ts`, `invoice-review.ts` changes, the
-   backlog dataset, `demo-data.ts`. Tests for all of it.
-2. **Tools.** `submit_invoice`, `reset_demo`, `decide_invoice` changes,
-   invoke triggers on `review_invoice` and `seed_examples`. Agent prompt
-   and surface. Evals.
-3. **Shell.** Persona, hash routes, auto-seed, header, reset modal. The
-   existing table becomes Queue. Reviews move to the invoke lane;
-   `runChatCommand` is deleted.
-4. **Approver screens.** Invoice detail, Purchase orders, History, Policy.
-5. **Requester screens.** Submit, My invoices, requester detail with
-   resubmit.
-6. **README.** Rewritten for the two-persona flow and the self-seeding
-   start.
 
 ## Out of scope
 
