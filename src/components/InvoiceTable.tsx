@@ -21,11 +21,13 @@ function Row({ inv, data, actions }: { inv: InvoiceRow; data: Data; actions: Inv
         {inv.notes ? <div className="note">{inv.notes}</div> : null}
       </td>
       <td>{inv.requester}</td>
-      <td>
+      <td className="po">
         {po ? (
           <>
             <div>{po.po_number}</div>
-            <div className="note">{po.description}</div>
+            <div className="note po__scope" title={po.description}>
+              {po.description}
+            </div>
             <div className="note">{usd(remaining(po))} remaining</div>
           </>
         ) : (
@@ -33,7 +35,7 @@ function Row({ inv, data, actions }: { inv: InvoiceRow; data: Data; actions: Inv
         )}
       </td>
       <td className="num">{usd(inv.total_usd)}</td>
-      <td>{inv.due_date}</td>
+      <td className="nowrap">{inv.due_date}</td>
       <td>
         <StatusPill inv={inv} />
         {amountNote ? <div className="note">{amountNote}</div> : null}

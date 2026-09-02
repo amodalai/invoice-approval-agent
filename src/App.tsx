@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ChatWidget, useAmodalContext, useStoreQuery, useToolRun } from "@amodalai/react";
-import { REQUESTERS } from "../amodal/_lib/examples.js";
 import { ConfirmModal } from "./components/ConfirmModal.js";
-import { personaFromId, personaId, usePersona, type Persona } from "./persona.js";
+import { Sidebar } from "./components/Sidebar.js";
+import { personaFromId, usePersona, type Persona } from "./persona.js";
 import { TABS, hashOf, resolveRoute, type Role, type Route } from "./routes.js";
 import { History } from "./screens/History.js";
 import { InvoiceDetail } from "./screens/InvoiceDetail.js";
@@ -12,7 +12,7 @@ import { PurchaseOrders } from "./screens/PurchaseOrders.js";
 import { Queue } from "./screens/Queue.js";
 import { Submit } from "./screens/Submit.js";
 import { errorMessage, runTool } from "./tools.js";
-import type { Data, EventRow, InvoiceRow, PORow, ReviewRow } from "./types.js";
+import { isDecided, type Data, type EventRow, type InvoiceRow, type PORow, type ReviewRow } from "./types.js";
 
 function useHashRoute(role: Role): Route {
   const [hash, setHash] = useState(() => location.hash);
@@ -29,14 +29,14 @@ function useHashRoute(role: Role): Route {
 }
 
 function Screen({ route, data, persona }: { route: Route; data: Data; persona: Persona }) {
-  const requester = persona.role === "requester" ? persona.requester : undefined;
+  const requester = persona.role === "requester";
   switch (route.name) {
     case "invoice":
       return <InvoiceDetail id={route.id} data={data} requester={requester} />;
     case "submit":
-      return requester ? <Submit key={requester} data={data} requester={requester} /> : null;
+      return <Submit data={data} />;
     case "mine":
-      return requester ? <MyInvoices data={data} requester={requester} /> : null;
+      return <MyInvoices data={data} />;
     case "purchase-orders":
       return <PurchaseOrders data={data} />;
     case "history":
@@ -114,38 +114,24 @@ export default function App() {
     location.hash = hashOf({ name: TABS[next.role][0].name });
   }
 
+  const counts =
+    persona.role === "requester"
+      ? { mine: data.invoices.filter((i) => i.status === "returned").length }
+      : { queue: data.invoices.filter((i) => !isDecided(i)).length };
+
   return (
-    <div className="page">
-      <header className="head">
-        <div className="head__bar">
-          <h1>Invoice Approval</h1>
-          <div className="head__actions">
-            <label className="persona">
-              <span>Acting as</span>
-              <select value={personaId(persona)} onChange={(e) => switchPersona(e.target.value)}>
-                <option value="approver">Approver</option>
-                {REQUESTERS.map((r) => (
-                  <option key={r} value={r}>
-                    {r}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <details className="menu">
-              <summary aria-label="More actions">⋯</summary>
-              <button className="menu__item" onClick={(e) => { e.currentTarget.closest("details")?.removeAttribute("open"); setResetError(undefined); setConfirmReset(true); }}>
-                Reset demo data
-              </button>
-            </details>
-          </div>
-        </div>
-        <nav className="tabs">
-          {TABS[persona.role].map((t) => (
-            <a key={t.name} className={`tab${route.name === t.name ? " active" : ""}`} href={hashOf({ name: t.name })}>
-              {t.label}
-            </a>
-          ))}
-        </nav>
+    <div className="app">
+      <Sidebar
+        persona={persona}
+        route={route}
+        counts={counts}
+        onSwitch={switchPersona}
+        onReset={() => {
+          setResetError(undefined);
+          setConfirmReset(true);
+        }}
+      />
+      <main className="page">
         {seedError ? (
           <div className="banner error">
             {seedError}{" "}
@@ -154,20 +140,20 @@ export default function App() {
             </button>
           </div>
         ) : null}
-      </header>
 
-      {invoicesQ.isLoading ? (
-        <div className="empty">Loading…</div>
-      ) : seed.status === "running" ? (
-        <div className="empty">Loading the demo…</div>
-      ) : (
-        <Screen route={route} data={data} persona={persona} />
-      )}
+        {invoicesQ.isLoading ? (
+          <div className="empty">Loading…</div>
+        ) : seed.status === "running" ? (
+          <div className="empty">Loading the demo…</div>
+        ) : (
+          <Screen route={route} data={data} persona={persona} />
+        )}
 
-      <footer className="foot">
-        Fictional demo. Vendors, invoices, purchase orders, and the spend policy are made up. The agent assists; a
-        human decides.
-      </footer>
+        <footer className="foot">
+          Fictional demo. Vendors, invoices, purchase orders, and the spend policy are made up. The agent assists; a
+          human decides.
+        </footer>
+      </main>
 
       {confirmReset ? (
         <ConfirmModal
@@ -185,10 +171,10 @@ export default function App() {
       <ChatWidget
         position="floating"
         serverUrl={runtimeUrl}
-        user={{ id: personaId(persona) }}
+        user={{ id: persona.role }}
         getToken={async () => ""}
         agent="default"
-        theme={{ primaryColor: "#000000", mode: "light" }}
+        theme={{ primaryColor: "#1f4f9c", mode: "light" }}
         onStreamEnd={() => {
           void data.refetch();
         }}

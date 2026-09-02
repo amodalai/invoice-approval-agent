@@ -4,7 +4,7 @@ export type Route =
   | { name: "queue" | "purchase-orders" | "history" | "policy" | "submit" | "mine" }
   | { name: "invoice"; id: string };
 
-type TabName = Exclude<Route, { name: "invoice" }>["name"];
+export type TabName = Exclude<Route, { name: "invoice" }>["name"];
 
 /** Each persona's tabs, first one is home. */
 export const TABS: Record<Role, Array<{ name: TabName; label: string }>> = {

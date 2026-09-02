@@ -148,12 +148,10 @@ test("a resubmission replaces a returned invoice at revision + 1 and clears the 
   assertDeclared("submit_invoice", calls.map(([n]) => n));
 });
 
-test("a resubmission is refused unless the invoice is returned and the requester matches", async () => {
+test("a resubmission is refused unless the invoice is returned", async () => {
   const { deps } = fakeDeps();
   await assert.rejects(submitInvoice({ ...form, invoice_id: "inv_nope" }, deps), /not found/);
   await assert.rejects(submitInvoice({ ...form, invoice_id: "inv_pixelforge_77" }, deps), /is new; only a returned invoice/);
-  deps.callTool("store__invoices__set", { key: "inv_pixelforge_77", value: { ...invoiceRow(INVOICES[3], NOW), status: "returned" } });
-  await assert.rejects(submitInvoice({ ...form, invoice_id: "inv_pixelforge_77", requester: "Lena Fischer (Facilities)" }, deps), /submitted by Maya Chen/);
 });
 
 test("a failing review leaves the invoice new, with its submitted event, and rethrows", async () => {

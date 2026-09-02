@@ -80,7 +80,7 @@ export function InvoiceSection({ inv, data }: { inv: InvoiceRow; data: Data }) {
  * note, the issues, and the form to resubmit; once decided, the approver's
  * note. No checks, no recommendation, no timeline.
  */
-function RequesterDetail({ inv, data, requester }: { inv: InvoiceRow; data: Data; requester: string }) {
+function RequesterDetail({ inv, data }: { inv: InvoiceRow; data: Data }) {
   const review = latestReview(data, inv);
   return (
     <>
@@ -98,7 +98,7 @@ function RequesterDetail({ inv, data, requester }: { inv: InvoiceRow; data: Data
               </ul>
             ) : null}
           </section>
-          <Submit data={data} requester={requester} initial={inv} />
+          <Submit data={data} initial={inv} />
         </>
       ) : null}
       {inv.status === "approved" || inv.status === "rejected" ? (
@@ -111,7 +111,7 @@ function RequesterDetail({ inv, data, requester }: { inv: InvoiceRow; data: Data
   );
 }
 
-export function InvoiceDetail({ id, data, requester }: { id: string; data: Data; requester?: string }) {
+export function InvoiceDetail({ id, data, requester }: { id: string; data: Data; requester: boolean }) {
   const actions = useInvoiceActions(data);
   const inv = data.invoices.find((i) => i.invoice_id === id);
   if (!inv) {
@@ -136,10 +136,10 @@ export function InvoiceDetail({ id, data, requester }: { id: string; data: Data;
             {usd(inv.total_usd)} · {inv.requester} · revision {inv.revision} · {inv.invoice_id}
           </p>
         </div>
-        <StatusPill inv={inv} requester={!!requester} />
+        <StatusPill inv={inv} requester={requester} />
       </div>
       {requester ? (
-        <RequesterDetail inv={inv} data={data} requester={requester} />
+        <RequesterDetail inv={inv} data={data} />
       ) : (
         <>
           <InvoiceSection inv={inv} data={data} />

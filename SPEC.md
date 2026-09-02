@@ -25,7 +25,7 @@ demo" button.
 
 | Decision | Choice | Why |
 | --- | --- | --- |
-| Personas | Requester and approver, switched in the header, no auth | The runtime gives the custom UI no user identity. A switch keeps the demo self-contained. |
+| Personas | One requester and one approver, switched in the rail, no auth | The runtime gives the custom UI no user identity. A switch keeps the demo self-contained. Every requester would see the same screens, so one is enough. |
 | What a requester submits | An invoice, with or without a purchase order | The data model and the policy already cover it. No new rules. |
 | Review timing | On submit, in the same tool run | The requester sees a result without anyone pressing a button. |
 | Lifecycle | Approver can return an invoice; requester edits and resubmits | Gives `hold` a human path, at the cost of one status and one decision value. |
@@ -34,7 +34,7 @@ demo" button.
 | Policy | Read-only in the UI | The guard hook, `policy.ts`, and the reviewer prompt all carry the thresholds. A runtime edit would let them drift. |
 | Escalate | The approver decides, note required | No third persona. Hard rules still block in code and in the hook. |
 | Reset | A `reset_demo` tool behind a confirm modal | Replay the demo without redeploying. |
-| Requester identity | Picked from the seeded people, kept in `localStorage` | The "names the person who requested it" rule always sees a real name. |
+| Requested by | A select over the seeded people on the Submit form, defaulting to the purchase order's requester | The "names the person who requested it" rule always sees a real name without a persona per person. |
 | Requester visibility | Status, issues on a return, and the approver's note | Recommendations and check tables stay approver-side, as in real AP. |
 
 ## Runtime constraints that shape the design
@@ -63,18 +63,20 @@ demo" button.
 
 ## Personas and identity
 
-The header carries the app name, a persona switch, and an overflow menu.
+A rail on the left carries the brand, the persona's sections with a count
+where one matters (undecided invoices on Queue, returned invoices on My
+invoices), the persona switch, and **Reset demo data**.
 
 - **Approver**: one operator. Events record the actor as `approver`.
-- **Requester**: one of the seeded people. The switch lists them:
-  `Omar Haddad (Engineering)`, `Lena Fischer (Facilities)`,
-  `Maya Chen (Marketing)`. The choice is kept under the `localStorage` key
-  `persona` as `{ role, requester }`, stamped on every submitted invoice as
-  `requester`, and filters My invoices.
+- **Requester**: one role, not a person. The choice is kept under the
+  `localStorage` key `persona` as `{ role }`. The person who asked for the
+  work is a field on the Submit form (`requester`, one of `Omar Haddad
+  (Engineering)`, `Lena Fischer (Facilities)`, `Maya Chen (Marketing)`),
+  prefilled from the chosen purchase order. Events record that name as the
+  actor of a submission.
 
-The overflow menu holds **Reset demo data**. The chat widget floats on every
-tab for both personas; the guard hook and the agent prompt keep chat from
-approving or paying anything.
+The chat widget floats on every tab for both personas; the guard hook and
+the agent prompt keep chat from approving or paying anything.
 
 ## Navigation
 
@@ -89,7 +91,7 @@ first tab.
 | Approver | `#/policy` | Policy: the Markdown and the thresholds from code |
 | Approver | `#/invoice/<id>` | Invoice detail: checks, reviews, events, actions |
 | Requester | `#/submit` | Submit: the invoice form |
-| Requester | `#/mine` | My invoices: the requester's invoices and their status |
+| Requester | `#/mine` | My invoices: every submitted invoice and its status |
 | Requester | `#/invoice/<id>` | Invoice detail, requester view |
 
 An unknown route or a route the persona does not own redirects to the
@@ -123,7 +125,7 @@ Rules the tools enforce:
   note.
 - The hard rules (`approvalBlockers`) block an approval in `decide_invoice`
   and in the `approval-guard` hook.
-- Only a `returned` invoice can be resubmitted, and only by its requester.
+- Only a `returned` invoice can be resubmitted.
 
 ## Data model
 
@@ -220,9 +222,8 @@ Behavior:
    If that key exists, append `_2`, `_3`, and so on. This keeps a resent
    invoice (same vendor, same number) as its own row, which is what the
    duplicate check needs.
-3. Resubmission: the row must exist, be `returned`, and carry the same
-   `requester`. Fields are replaced, `revision` increments, `status` becomes
-   `new`, `returned_note` clears.
+3. Resubmission: the row must exist and be `returned`. Fields are replaced,
+   `revision` increments, `status` becomes `new`, `returned_note` clears.
 4. Write the row with `status: new`, `submitted_at` and `received_at` set to
    now (resubmission keeps the original `received_at`).
 5. Append `submitted` or `resubmitted`, actor the requester.
@@ -389,10 +390,11 @@ every writer and names the three files that carry the values.
 ### Requester: Submit
 
 A form: vendor name, invoice number, purchase order (a select over open POs
-for this requester plus "None"), invoice date, due date, line items (add and
-remove rows; description, quantity, unit price), total (computed from the
-lines, with an "enter a different total" toggle for the mismatch demo),
-notes. Requester is shown, not edited.
+plus "None"), requested by (a select over the seeded people, set from the
+purchase order when one is chosen), invoice date, due date, line items (add
+and remove rows; description, quantity, unit price), total (computed from
+the lines, with an "enter a different total" toggle for the mismatch demo),
+notes.
 
 Submit runs `submit_invoice`, holds the button at "Submitting and
 reviewing…" while the review runs, then navigates to the invoice detail.

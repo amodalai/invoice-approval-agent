@@ -2,14 +2,14 @@ import { StatusPill } from "../components/StatusPill.js";
 import { hashOf } from "../routes.js";
 import { usd, when, type Data } from "../types.js";
 
-export function MyInvoices({ data, requester }: { data: Data; requester: string }) {
-  const mine = data.invoices.filter((i) => i.requester === requester).sort((a, b) => b.submitted_at.localeCompare(a.submitted_at));
+export function MyInvoices({ data }: { data: Data }) {
+  const mine = [...data.invoices].sort((a, b) => b.submitted_at.localeCompare(a.submitted_at));
   return (
     <section>
       <div className="screen__bar">
         <div>
           <h2>My invoices</h2>
-          <p className="sub">What {requester} has submitted, newest first.</p>
+          <p className="sub">Everything submitted for review, newest first. A returned invoice can be edited and resubmitted.</p>
         </div>
       </div>
       {mine.length === 0 ? (

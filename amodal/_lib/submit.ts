@@ -97,7 +97,6 @@ export async function submitInvoice(input: unknown, deps: ReviewDeps) {
     if (existing.status !== "returned") {
       throw new Error(`Invoice ${id} is ${existing.status}; only a returned invoice can be resubmitted.`);
     }
-    if (existing.requester !== fields.requester) throw new Error(`Invoice ${id} was submitted by ${existing.requester}.`);
     invoice = { ...existing, ...fields, ...NEW_INVOICE_DEFAULTS, revision: (existing.revision ?? 1) + 1, submitted_at: nowIso };
   } else {
     const base = `inv_${slug(fields.vendor_name)}_${slug(fields.invoice_number)}`;

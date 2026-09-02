@@ -38,10 +38,11 @@ same way:
 
 ## How it works
 
-Two personas share one screen, switched in the header with no login: the
-**approver**, and a **requester** picked from the three seeded people (Omar
-Haddad, Lena Fischer, Maya Chen). The choice is kept in `localStorage` and
-stamped on every submitted invoice.
+Two personas share one screen, switched in the left rail with no login: the
+**approver** and the **requester**. The choice is kept in `localStorage`. The
+person who asked for the work (one of the three seeded people: Omar Haddad,
+Lena Fischer, Maya Chen) is a field on the Submit form, prefilled from the
+purchase order, and stamped on the invoice as `requester`.
 
 The UI calls its tools through the direct-invoke lane (`useToolRun` posts to
 `/api/tools/<name>/run`). A tool on that lane declares `execution: "durable"`
@@ -173,7 +174,7 @@ across the three requesters, a rejected duplicate (Kestrel Courier's 4410
 sent twice), one returned for a line-sum error and approved on its second
 revision (Sable Hardware's 3305), and one escalated and rejected with a note
 (Cedarline's compressor replacement, over its maintenance order). They fill
-the History tab, the purchase-order balances, and each requester's list at
+the History tab, the purchase-order balances, and the requester's list at
 first open.
 
 ## Running it
@@ -197,19 +198,19 @@ variables are needed.
    invoice exceeds the PO by more than the tolerance. That is the hard rule
    in `decide_invoice`; the `approval-guard` hook enforces the same rule for
    any other writer. **Return** it instead, with a note.
-5. Switch the persona to **Lena Fischer (Facilities)**. **My invoices** shows
-   the returned 2288 with your note; **Edit and resubmit** opens the form
-   prefilled. Drop the rush fee, resubmit, and watch the review run. Switch
-   back to the approver: the queue shows revision 2, ready to approve.
-6. As **Omar Haddad (Engineering)**, submit a new invoice from **Submit**.
-   Tick **Enter a different total** to demonstrate the "lines do not add up"
+5. Switch the persona to **Requester**. **My invoices** shows the returned
+   2288 with your note; **Edit and resubmit** opens the form prefilled. Drop
+   the rush fee, resubmit, and watch the review run. Switch back to the
+   approver: the queue shows revision 2, ready to approve.
+6. Still as the requester, submit a new invoice from **Submit**. Tick
+   **Enter a different total** to demonstrate the "lines do not add up"
    rule. The review runs on submit and lands on the invoice's page.
 7. Ask the chat: `what happened to Atlas's invoice?`, `how much is left on
    PO-1063?`, or `would $2,600 be within tolerance on PO-1052?`. It answers
    from the events store, the other stores, and `invoice_math`, never from
    arithmetic in its head. Ask it to approve or return something and it
    points you at the queue.
-8. **Reset demo data** in the header's overflow menu puts everything back.
+8. **Reset demo data** at the bottom of the rail puts everything back.
 9. Open the agent's **Evals** page and run the suite: nine green checks.
    Then edit `spend-policy.md`, raise the no-PO limit to $500, redeploy, and
    re-run: `review-no-po-small` fails while the rest stay green.
