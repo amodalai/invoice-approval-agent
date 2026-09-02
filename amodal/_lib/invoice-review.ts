@@ -71,6 +71,7 @@ export function reviewKey(invoice_id: string, revision: number, createdAt: Date)
 }
 
 const norm = (s: unknown) => String(s ?? "").trim().toLowerCase();
+const money = (n: number) => `$${n.toLocaleString("en-US")}`;
 
 /**
  * The earliest other invoice from the same vendor with the same invoice
@@ -115,14 +116,14 @@ export function approvalBlockers(f: Facts): string[] {
   const out: string[] = [];
   if (f.duplicate_of) out.push(`duplicate of ${f.duplicate_of}`);
   if (f.vendor_matches === false) out.push("the purchase order belongs to a different vendor");
-  if (f.needs_po) out.push(`over $${f.math.policy.no_po_limit_usd.toLocaleString("en-US")} with no purchase order`);
+  if (f.needs_po) out.push(`over ${money(f.math.policy.no_po_limit_usd)} with no purchase order`);
   if (f.po_status === "closed") out.push("the purchase order is closed");
   if (f.math.within_tolerance === false)
     out.push(
-      `over the PO's remaining balance by $${f.math.variance_usd!.toLocaleString("en-US")} (tolerance $${f.math.tolerance_usd!.toLocaleString("en-US")})`,
+      `over the PO's remaining balance by ${money(f.math.variance_usd!)} (tolerance ${money(f.math.tolerance_usd!)})`,
     );
   if (!f.math.total_matches_lines)
-    out.push(`line items sum to $${f.math.line_sum_usd.toLocaleString("en-US")}, not the stated total`);
+    out.push(`line items sum to ${money(f.math.line_sum_usd)}, not the stated total`);
   return out;
 }
 
@@ -312,7 +313,7 @@ export async function runInvoiceReview(
   const { invoice, po, others } = loaded;
 
   deps.trace?.(
-    `Loaded ${invoice.vendor_name} #${invoice.invoice_number} for $${invoice.total_usd.toLocaleString("en-US")}: ` +
+    `Loaded ${invoice.vendor_name} #${invoice.invoice_number} for ${money(invoice.total_usd)}: ` +
       (po ? `PO ${po.po_number} (${po.status}), ` : "no purchase order, ") +
       `${others.filter((o) => o.invoice_id !== invoice_id).length} other invoice(s) from this vendor.`,
   );
