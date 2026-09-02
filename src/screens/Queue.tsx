@@ -13,7 +13,10 @@ export function Queue({ data }: { data: Data }) {
     <section>
       <div className="screen__bar">
         <div>
-          <h2>Queue</h2>
+          <h2>
+            Queue
+            {invoices.length ? <span className="screen__count">{invoices.length}</span> : null}
+          </h2>
           <p className="sub">
             The agent checks each invoice against the spend policy and recommends <em>approve</em>, <em>hold</em>,{" "}
             <em>escalate</em>, or <em>reject</em>. You decide.

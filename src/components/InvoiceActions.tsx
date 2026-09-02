@@ -11,8 +11,8 @@ export function InvoiceActionButtons({ inv, actions }: { inv: InvoiceRow; action
       {isDecided(inv) ? (
         inv.decision_note ? <div className="note">{inv.decision_note}</div> : null
       ) : (
-        <>
-          <button className="btn" disabled={busy} onClick={() => actions.onReview(inv.invoice_id)}>
+        <div className="act-row">
+          <button className="btn btn--review" disabled={busy} onClick={() => actions.onReview(inv.invoice_id)}>
             {busy ? "Reviewing…" : inv.review_id ? "Re-review" : "Review"}
           </button>
           {inv.status === "reviewed" ? (
@@ -28,7 +28,7 @@ export function InvoiceActionButtons({ inv, actions }: { inv: InvoiceRow; action
               </button>
             </div>
           ) : null}
-        </>
+        </div>
       )}
     </>
   );

@@ -174,7 +174,7 @@ export default function App() {
         user={{ id: persona.role }}
         getToken={async () => ""}
         agent="default"
-        theme={{ primaryColor: "#1f4f9c", mode: "light" }}
+        theme={{ primaryColor: "#2f56d9", mode: "light" }}
         onStreamEnd={() => {
           void data.refetch();
         }}
