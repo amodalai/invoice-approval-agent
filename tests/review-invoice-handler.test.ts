@@ -56,6 +56,7 @@ test("wires the composite context into the review flow", async () => {
   assert.equal(seen.policyPath, "amodal/knowledge/spend-policy.md");
   assert.equal((seen.input as { spend_policy: string }).spend_policy, "# policy");
   assert.equal(store.get(`reviews:${out.review_id}`)!.reviewer_session_id, "sess-1");
+  assert.equal(store.get(`reviews:${out.review_id}`)!.created_at, NOW);
   assert.ok(seen.reasoning.some((l) => l.startsWith("Loaded Brightline")));
 });
 

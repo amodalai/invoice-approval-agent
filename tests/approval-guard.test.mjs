@@ -34,6 +34,8 @@ test("ignores other tools, other points, and non-approval writes", async () => {
   assert.equal((await hook.run("postToolUse", write("store__invoices__set", { ...brightline, status: "approved" }), c)).action, "allow");
   assert.equal((await hook.run("preToolUse", write("store__purchase_orders__set", { ...po }), c)).action, "allow");
   assert.equal((await hook.run("preToolUse", write("store__invoices__set", { ...brightline, status: "reviewed", recommendation: "hold" }), c)).action, "allow");
+  const event = { event_id: "evt_1", invoice_id: "inv_brightline_0417_resend", kind: "reviewed", actor: "agent", recommendation: "approve" };
+  assert.equal((await hook.run("preToolUse", { toolName: "store__events__set", args: { key: event.event_id, value: event } }, c)).action, "allow");
 });
 
 test("allows a clean approval and blocks one over tolerance", async () => {

@@ -1,13 +1,14 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { INVOICES, PURCHASE_ORDERS, ensureExamplesSeeded, invoiceRow, seedRows } from "../amodal/_lib/demo-data.js";
+import { INVOICES, PURCHASE_ORDERS, STORE_KEYS, ensureExamplesSeeded, invoiceRow, seedRows } from "../amodal/_lib/demo-data.js";
 import { BACKLOG, BACKLOG_PURCHASE_ORDERS, REQUESTERS } from "../amodal/_lib/examples.js";
 import { POLICY, invoiceMath } from "../amodal/_lib/policy.js";
 
 const NOW = "2026-09-01T00:00:00.000Z";
 const ALL_INVOICES = [...INVOICES, ...BACKLOG];
 const ALL_POS = [...PURCHASE_ORDERS, ...BACKLOG_PURCHASE_ORDERS];
-const rowsOf = (store: string) => seedRows(NOW).find((s) => s.store === store)!.rows;
+const rowsOf = (store: keyof typeof STORE_KEYS) => seedRows(NOW)[store];
+const allRows = () => Object.entries(seedRows(NOW)).map(([store, rows]) => ({ store, field: STORE_KEYS[store as keyof typeof STORE_KEYS], rows }));
 
 test("every demo invoice's lines add up to its total and names a known requester", () => {
   for (const inv of ALL_INVOICES) {
@@ -39,7 +40,7 @@ test("the backlog leaves the live purchase orders and the live invoice numbers a
     assert.ok(!inv.po_number || !livePos.has(inv.po_number), inv.invoice_id);
     assert.ok(!liveNumbers.has(`${inv.vendor_name}#${inv.invoice_number}`), inv.invoice_id);
   }
-  const ids = seedRows(NOW).flatMap((s) => s.rows.map((r) => `${s.store}:${r[s.field]}`));
+  const ids = allRows().flatMap((s) => s.rows.map((r) => `${s.store}:${r[s.field]}`));
   assert.equal(new Set(ids).size, ids.length, "seed keys are unique");
 });
 
@@ -106,7 +107,7 @@ function fakeSeedStore(present: Record<string, string[]>) {
       calls.push([name, args]);
       const m = /^store__(\w+)__query$/.exec(name);
       if (!m) return {};
-      const { field } = seedRows(NOW).find((s) => s.store === m[1])!;
+      const field = STORE_KEYS[m[1] as keyof typeof STORE_KEYS];
       return { documents: (present[m[1]] ?? []).map((k) => ({ payload: { [field]: k } })) };
     },
     now: () => new Date(NOW),
@@ -119,7 +120,7 @@ test("seeding writes only the rows that are missing, in every store", async () =
   const present = { purchase_orders: ["PO-1041"], invoices: ["inv_atlas_9911", "inv_sable_3305"], reviews: [], events: [] };
   const { ctx, written, calls } = fakeSeedStore(present);
   const seeded = await ensureExamplesSeeded(ctx);
-  const expected = seedRows(NOW).flatMap((s) =>
+  const expected = allRows().flatMap((s) =>
     s.rows.filter((r) => !(present[s.store as keyof typeof present] as string[]).includes(String(r[s.field]))).map((r) => `${s.store}:${r[s.field]}`),
   );
   assert.deepEqual(written(), expected);
@@ -134,12 +135,12 @@ test("seeding writes only the rows that are missing, in every store", async () =
 });
 
 test("seeding twice writes nothing the second time, and assumeEmpty skips the lookups", async () => {
-  const stores = Object.fromEntries(seedRows(NOW).map((s) => [s.store, s.rows.map((r) => String(r[s.field]))]));
+  const stores = Object.fromEntries(allRows().map((s) => [s.store, s.rows.map((r) => String(r[s.field]))]));
   const { ctx, written } = fakeSeedStore(stores);
   assert.equal(await ensureExamplesSeeded(ctx), 0);
   assert.deepEqual(written(), []);
   const blind = fakeSeedStore(stores);
   assert.equal(await ensureExamplesSeeded(blind.ctx, { assumeEmpty: true }), rowsOf("invoices").length);
   assert.ok(!blind.calls.some(([n]) => n.endsWith("__query")));
-  assert.equal(blind.written().length, seedRows(NOW).reduce((n, s) => n + s.rows.length, 0));
+  assert.equal(blind.written().length, allRows().reduce((n, s) => n + s.rows.length, 0));
 });

@@ -2,9 +2,9 @@ import type { CustomToolContext } from "../../_types/tool-context.js";
 import { ensureExamplesSeeded, INVOICES } from "../../_lib/demo-data.js";
 
 /**
- * Composite tool behind the `seed` chat command (a regex trigger on this
- * tool, fired from the request path before the LLM) and the UI's Load demo
- * invoices button, which sends the same command through the chat surface.
+ * Durable tool behind the `seed` chat command (a regex trigger on this tool,
+ * fired from the request path before the LLM) and the UI's first open, which
+ * runs it through the direct-invoke lane when the invoices store is empty.
  */
 export default async function seed_examples(_params: Record<string, never>, ctx: CustomToolContext) {
   if (!ctx.callTool) {
@@ -14,7 +14,10 @@ export default async function seed_examples(_params: Record<string, never>, ctx:
     );
   }
 
-  const seeded = await ensureExamplesSeeded({ callTool: (name, args) => ctx.callTool!(name, args) });
+  const seeded = await ensureExamplesSeeded({
+    callTool: (name, args) => ctx.callTool!(name, args),
+    now: () => new Date(ctx.now ? ctx.now() : Date.now()),
+  });
   ctx.emitReasoning?.(
     seeded > 0
       ? `Seeded ${seeded} demo invoice(s); the rest were already in the store.`

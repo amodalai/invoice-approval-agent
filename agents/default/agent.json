@@ -5,6 +5,7 @@
   "stores": {
     "invoices": "rw",
     "purchase_orders": "rw",
-    "reviews": "rw"
+    "reviews": "rw",
+    "events": "r"
   }
 }

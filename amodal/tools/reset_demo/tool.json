@@ -1,0 +1,29 @@
+{
+  "description": "Reset the demo: remove every invoice, purchase order, review, and event, load the demo dataset again, and record a reset event. Fired only from the Reset demo data action in the header, after the operator confirms; not listed in any agent's tools.",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {}
+  },
+  "runningLabel": "Resetting the demo data",
+  "completedLabel": "Reset the demo data",
+  "timeout": 120000,
+  "execution": "durable",
+  "uses": {
+    "tools": [
+      "store__invoices__list",
+      "store__invoices__remove",
+      "store__invoices__set",
+      "store__purchase_orders__list",
+      "store__purchase_orders__remove",
+      "store__purchase_orders__set",
+      "store__reviews__list",
+      "store__reviews__remove",
+      "store__reviews__set",
+      "store__events__list",
+      "store__events__remove",
+      "store__events__set"
+    ]
+  },
+  "triggers": [{ "kind": "invoke" }]
+}

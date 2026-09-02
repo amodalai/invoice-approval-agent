@@ -6,7 +6,7 @@ import {
   type ExampleInvoice,
   type ExamplePO,
 } from "./examples.js";
-import { eventRow, type EventInput, type EventRow } from "./events.js";
+import { eventRow, type EventInput } from "./events.js";
 import { reviewKey } from "./invoice-review.js";
 
 export { INVOICES, PURCHASE_ORDERS };
@@ -74,12 +74,12 @@ export function invoiceRow(inv: ExampleInvoice, nowIso: string) {
 function backlogRows(nowIso: string) {
   const invoices: Array<Record<string, unknown>> = [];
   const reviews: Array<Record<string, unknown>> = [];
-  const events: EventRow[] = [];
+  const events: Array<Record<string, unknown>> = [];
   for (const inv of BACKLOG) {
     const base = invoiceRow(inv, nowIso);
     const received = Date.parse(base.received_at);
     const event = (e: EventInput, at: Date) =>
-      events.push(eventRow({ invoice_id: inv.invoice_id, ...e }, at, `${inv.invoice_id}_${events.length}`));
+      events.push({ ...eventRow({ invoice_id: inv.invoice_id, ...e }, at, `${inv.invoice_id}_${events.length}`) });
     const last = inv.reviews.length - 1;
     let latest = { review_id: "", reviewed_at: "", submitted_at: "", decided_at: "" };
     inv.reviews.forEach((r, i) => {
@@ -116,23 +116,29 @@ function backlogRows(nowIso: string) {
   return { invoices, reviews, events };
 }
 
-/** Every row the seed writes, per store, with the field that is the store key. */
-export function seedRows(nowIso: string) {
+/** The seeded stores and the field each one is keyed by. */
+export const STORE_KEYS = {
+  purchase_orders: "po_number",
+  invoices: "invoice_id",
+  reviews: "review_id",
+  events: "event_id",
+} as const;
+
+/** Every row the seed writes, per store. */
+export function seedRows(nowIso: string): Record<keyof typeof STORE_KEYS, Array<Record<string, unknown>>> {
   const backlog = backlogRows(nowIso);
   const live = INVOICES.map((i) => invoiceRow(i, nowIso));
-  return [
-    { store: "purchase_orders", field: "po_number", rows: [...PURCHASE_ORDERS, ...BACKLOG_PURCHASE_ORDERS].map((p) => poRow(p, nowIso)) },
-    { store: "invoices", field: "invoice_id", rows: [...backlog.invoices, ...live] },
-    { store: "reviews", field: "review_id", rows: backlog.reviews },
-    {
-      store: "events",
-      field: "event_id",
-      rows: [
-        ...backlog.events,
-        ...live.map((i) => eventRow({ invoice_id: i.invoice_id, kind: "seeded", actor: "system", revision: 1 }, new Date(i.received_at), `${i.invoice_id}_0`)),
-      ],
-    },
-  ] as Array<{ store: string; field: string; rows: Array<Record<string, unknown>> }>;
+  return {
+    purchase_orders: [...PURCHASE_ORDERS, ...BACKLOG_PURCHASE_ORDERS].map((p) => poRow(p, nowIso)),
+    invoices: [...backlog.invoices, ...live],
+    reviews: backlog.reviews,
+    events: [
+      ...backlog.events,
+      ...live.map((i) => ({
+        ...eventRow({ invoice_id: i.invoice_id, kind: "seeded", actor: "system", revision: 1 }, new Date(i.received_at), `${i.invoice_id}_0`),
+      })),
+    ],
+  };
 }
 
 /**
@@ -143,8 +149,10 @@ export function seedRows(nowIso: string) {
  */
 export async function ensureExamplesSeeded(ctx: SeedCtx, opts: { assumeEmpty?: boolean } = {}): Promise<number> {
   const nowIso = (ctx.now ? ctx.now() : new Date()).toISOString();
+  const all = seedRows(nowIso);
   let seeded = 0;
-  for (const { store, field, rows } of seedRows(nowIso)) {
+  for (const [store, field] of Object.entries(STORE_KEYS)) {
+    const rows = all[store as keyof typeof STORE_KEYS];
     const present = new Set<unknown>();
     if (!opts.assumeEmpty) {
       const q = (await ctx.callTool(`store__${store}__query`, { limit: 1000 })) as {

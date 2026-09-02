@@ -1,3 +1,4 @@
+import type { CustomToolContext } from "../_types/tool-context.js";
 import { INVOICES, PURCHASE_ORDERS, ensureExamplesSeeded, invoiceRow, poRow } from "./demo-data.js";
 import { appendEvent } from "./events.js";
 import { invoiceMath, type InvoiceMath, type LineItem } from "./policy.js";
@@ -200,6 +201,35 @@ export interface ReviewDeps {
   sessionId: string;
   /** Optional reasoning-trace sink (ctx.emitReasoning). */
   trace?(line: string): void;
+}
+
+/** Single source of truth for the policy text the reviewer reads, repo-relative. */
+export const POLICY_PATH = "amodal/knowledge/spend-policy.md";
+
+/**
+ * The review flow's dependencies from a composite tool's context. Everything
+ * the flow calls must be declared in the tool's `uses`; undeclared calls fail
+ * closed. `now` and `random` are journaled in a durable run.
+ */
+export function reviewDeps(tool: string, ctx: CustomToolContext): ReviewDeps {
+  if (!ctx.callTool || !ctx.callSubagent) {
+    throw new Error(
+      `${tool} needs the composite context (ctx.callTool + ctx.callSubagent). ` +
+        "Check tool.json `uses` and that the calling path wires composition.",
+    );
+  }
+  return {
+    callTool: (name, args) => ctx.callTool!(name, args),
+    callSubagent: (ref, task, input) => ctx.callSubagent!(ref, task, input),
+    loadPolicy: () => {
+      if (!ctx.fs) throw new Error(`ctx.fs is unavailable, so the spend policy (${POLICY_PATH}) cannot be read.`);
+      return ctx.fs.readRepoFile(POLICY_PATH);
+    },
+    now: () => new Date(ctx.now ? ctx.now() : Date.now()),
+    random: () => (ctx.random ?? Math.random)(),
+    sessionId: ctx.sessionId ?? "",
+    trace: (line) => ctx.emitReasoning?.(line),
+  };
 }
 
 export interface ReviewOutcome {

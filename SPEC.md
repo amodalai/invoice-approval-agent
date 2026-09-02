@@ -51,9 +51,14 @@ demo" button.
   holds in memory instead of re-reading it, and `runInvoiceReview` accepts a
   preloaded invoice.
 - **The invoke lane exists.** `useToolRun` posts to `/api/tools/<name>/run`
-  for any tool with an `invoke` trigger. Reviews and seeding move to it; the
-  chat detour through `runChatCommand` goes away. The `review <id>` and
-  `seed` regex triggers stay for chat and for the evals.
+  for any tool with an `invoke` trigger and `execution: "durable"`; the lane
+  refuses a non-durable tool. Durable tools still run from chat: a regex
+  trigger executes the handler with the same composite context. Reviews and
+  seeding move to the lane; the chat detour through `runChatCommand` goes
+  away. The `review <id>` and `seed` regex triggers stay for chat and for the
+  evals. A run's result is `{ sessionId, outcome, result }`; a thrown handler
+  error resolves with `outcome.kind: "failed"` and the message in
+  `outcome.reason`, so the UI reads the outcome instead of catching.
 - **Store tools** are `store__<name>__get`, `__set`, `__query`, `__list`, and
   `__remove`. `__remove` is registered only for a store whose JSON declares
   `"deletable": true`; all four stores do. Reset uses `__list` and `__remove`.
@@ -174,9 +179,9 @@ invoice?" is answerable from it.
 
 | Tool | Triggers | Lane | Change |
 | --- | --- | --- | --- |
-| `seed_examples` | `seed` regex, `invoke` | composite | Loads the extended dataset, including reviews and events. Idempotent per row. |
+| `seed_examples` | `seed` regex, `invoke` | durable | Loads the extended dataset, including reviews and events. Idempotent per row. |
 | `submit_invoice` | `invoke` | durable | New. Validates, writes the row, appends the event, reviews the in-memory row. |
-| `review_invoice` | `review <id>` regex, `invoke` | composite | Writes a new review row per run, stamps `review_id`, appends `reviewed`. |
+| `review_invoice` | `review <id>` regex, `invoke` | durable | Writes a new review row per run, stamps `review_id`, appends `reviewed`. |
 | `decide_invoice` | `invoke` | durable | `decision` gains `returned`. Note rules. Appends the event. |
 | `reset_demo` | `invoke` | durable | New. Removes every row in the four stores, then seeds. Appends `reset`. |
 | `invoice_math` | | | Unchanged. |
@@ -255,7 +260,8 @@ Actor is `approver`.
 Lists and removes every row in `invoices`, `purchase_orders`, `reviews`, and
 `events`, then calls `ensureExamplesSeeded`. Appends one `reset` event with
 actor `system` after the seed. `uses` declares the four stores' `list`,
-`remove`, `query`, and `set` tools. Not in any agent's tools.
+`remove`, and `set` tools; the seed runs blind, so no `query`. Not in any
+agent's tools.
 
 ### Agent surfaces
 

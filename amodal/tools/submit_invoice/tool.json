@@ -1,0 +1,49 @@
+{
+  "description": "Submit a vendor invoice for review, as a requester. Validates the fields, writes the invoice row (a new one, or the returned one at revision + 1 when invoice_id is given), appends the submitted or resubmitted event, then reviews the invoice in the same run: the deterministic checks in code, the policy judgment in the invoice-reviewer subagent. Returns { invoice_id, revision, recommendation, review_id }. Fired only from the requester's Submit form via the direct-invoke lane; not listed in any agent's tools.",
+  "parameters": {
+    "type": "object",
+    "additionalProperties": false,
+    "properties": {
+      "invoice_id": { "type": "string", "description": "Present on a resubmission: the returned invoice to replace." },
+      "vendor_name": { "type": "string" },
+      "invoice_number": { "type": "string" },
+      "po_number": { "type": "string", "description": "The purchase order the invoice bills against, or omitted." },
+      "invoice_date": { "type": "string", "description": "YYYY-MM-DD" },
+      "due_date": { "type": "string", "description": "YYYY-MM-DD" },
+      "total_usd": { "type": "number", "description": "The total the vendor states. Not forced to equal the line sum." },
+      "line_items": {
+        "type": "array",
+        "items": {
+          "type": "object",
+          "properties": {
+            "description": { "type": "string" },
+            "quantity": { "type": "number" },
+            "unit_price_usd": { "type": "number" }
+          },
+          "required": ["description", "quantity", "unit_price_usd"]
+        }
+      },
+      "notes": { "type": "string" },
+      "requester": { "type": "string", "description": "The person submitting, as Name (Team)." }
+    },
+    "required": ["vendor_name", "invoice_number", "invoice_date", "due_date", "total_usd", "line_items", "requester"]
+  },
+  "runningLabel": "Submitting and reviewing the invoice",
+  "completedLabel": "Submitted and reviewed the invoice",
+  "timeout": 180000,
+  "execution": "durable",
+  "uses": {
+    "tools": [
+      "store__invoices__get",
+      "store__invoices__query",
+      "store__invoices__set",
+      "store__purchase_orders__get",
+      "store__purchase_orders__query",
+      "store__purchase_orders__set",
+      "store__reviews__set",
+      "store__events__set"
+    ],
+    "subagents": ["invoice-reviewer"]
+  },
+  "triggers": [{ "kind": "invoke" }]
+}
