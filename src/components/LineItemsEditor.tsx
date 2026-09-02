@@ -1,3 +1,5 @@
+import { usd } from "../types.js";
+
 export interface LineDraft {
   description: string;
   quantity: string;
@@ -33,7 +35,7 @@ export function LineItemsEditor({ lines, onChange }: { lines: LineDraft[]; onCha
             <td className="num">
               <input type="number" min="0" step="0.01" value={l.unit_price_usd} onChange={(e) => update(i, { unit_price_usd: e.target.value })} />
             </td>
-            <td className="num">{lineAmount(l).toLocaleString("en-US", { style: "currency", currency: "USD" })}</td>
+            <td className="num">{usd(lineAmount(l))}</td>
             <td className="act">
               <button type="button" className="btn btn--ghost" disabled={lines.length === 1} onClick={() => onChange(lines.filter((_, j) => j !== i))}>
                 Remove

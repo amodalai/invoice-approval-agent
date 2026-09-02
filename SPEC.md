@@ -458,6 +458,7 @@ src/
 tests/
   policy.test.ts  invoice-review.test.ts  decide-invoice.test.ts  demo-data.test.ts  approval-guard.test.mjs
   submit.test.ts  events.test.ts  reset-demo.test.ts  routes.test.ts  review-invoice-handler.test.ts
+  types.test.ts
   helpers.ts                asserts a handler's store calls are declared in its tool.json uses
 ```
 
@@ -480,6 +481,7 @@ Unit tests, `npm test`:
 - `reset-demo.test.ts`: every store is emptied before the seed, one `reset`
   event.
 - `routes.test.ts`: persona ownership of routes and the redirect.
+- `types.test.ts`: `usd` shows the cents only when the amount has cents.
 - `approval-guard.test.mjs`: unchanged, plus one case proving the hook
   ignores `store__events__set`.
 
