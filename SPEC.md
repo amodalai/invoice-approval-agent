@@ -172,7 +172,7 @@ Today: keyed `rev_{invoice_id}`, so a re-review overwrites.
 Indexed: `invoice_id`, `kind`, `actor`, `created_at`.
 
 Every tool that changes an invoice appends one event in the same run. The
-agent's chat surface has this store `r`, so "what happened to Atlas's
+agent's chat surface has this store as `read`, so "what happened to Atlas's
 invoice?" is answerable from it.
 
 ## Tools
@@ -266,7 +266,7 @@ agent's tools.
 ### Agent surfaces
 
 - `agents/default/agent.json`: tools unchanged (`review_invoice`,
-  `seed_examples`, `invoice_math`); stores gain `events: r`.
+  `seed_examples`, `invoice_math`); stores gain `events: read`.
 - `agents/default/AGENT.md`: drop the "Load demo invoices" instruction; say
   the data is loaded on first open; add that history questions are answered
   from the events store; list the requesters.

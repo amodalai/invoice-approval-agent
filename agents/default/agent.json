@@ -6,6 +6,6 @@
     "invoices": "rw",
     "purchase_orders": "rw",
     "reviews": "rw",
-    "events": "r"
+    "events": "read"
   }
 }
