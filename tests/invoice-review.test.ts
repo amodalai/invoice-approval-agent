@@ -62,7 +62,9 @@ test("clamping keeps the reviewer's call unless the floor is more conservative",
   const clean = checkInvoice(inv("inv_brightline_0417"), po("PO-1041"), all);
   assert.equal(clampRecommendation("approve", clean), "approve");
   assert.equal(clampRecommendation("hold", clean), "hold");
-  assert.equal(clampRecommendation("nonsense", clean), "hold");
+  for (const bad of ["nonsense", "toString", "constructor", "__proto__", ""]) {
+    assert.equal(clampRecommendation(bad, clean), "hold", JSON.stringify(bad));
+  }
   const over = checkInvoice(inv("inv_norwood_2288"), po("PO-1052"), all);
   assert.equal(clampRecommendation("approve", over), "escalate");
   assert.equal(clampRecommendation("reject", over), "reject");

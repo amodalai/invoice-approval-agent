@@ -37,7 +37,6 @@ export interface PORow {
 
 export type Recommendation = "approve" | "hold" | "escalate" | "reject";
 const RANK: Record<Recommendation, number> = { approve: 0, hold: 1, escalate: 2, reject: 3 };
-export const RECOMMENDATIONS = Object.keys(RANK) as Recommendation[];
 
 export interface Check {
   name: string;
@@ -138,7 +137,8 @@ export function floorRecommendation(f: Facts): Recommendation {
 /** The reviewer's call, or the floor, whichever is more conservative. */
 export function clampRecommendation(proposed: string, f: Facts): Recommendation {
   const floor = floorRecommendation(f);
-  const rec = (RECOMMENDATIONS as string[]).includes(proposed) ? (proposed as Recommendation) : "hold";
+  // hasOwn, not `in`: `proposed` comes from the model, and "toString" is on the prototype.
+  const rec = Object.hasOwn(RANK, proposed) ? (proposed as Recommendation) : "hold";
   return RANK[rec] >= RANK[floor] ? rec : floor;
 }
 
