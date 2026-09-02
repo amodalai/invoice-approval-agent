@@ -172,8 +172,12 @@ Today: keyed `rev_{invoice_id}`, so a re-review overwrites.
 Indexed: `invoice_id`, `kind`, `actor`, `created_at`.
 
 Every tool that changes an invoice appends one event in the same run. The
-agent's chat surface has this store as `read`, so "what happened to Atlas's
-invoice?" is answerable from it.
+agent's chat surface has this store as `rw`: a session registers store
+tools from the agent's grants (`read` gives get, query, and list; `rw` adds
+set and remove), and a composite tool's `uses` is checked against that
+registry, so the events writes in `review_invoice` and `seed_examples` need
+the write grant. The prompt forbids writing events by hand. "What happened
+to Atlas's invoice?" is answerable from the store.
 
 ## Tools
 
@@ -266,7 +270,8 @@ agent's tools.
 ### Agent surfaces
 
 - `agents/default/agent.json`: tools unchanged (`review_invoice`,
-  `seed_examples`, `invoice_math`); stores gain `events: read`.
+  `seed_examples`, `invoice_math`); stores gain `events: rw` (see the
+  `events` store above for why not `read`).
 - `agents/default/AGENT.md`: drop the "Load demo invoices" instruction; say
   the data is loaded on first open; add that history questions are answered
   from the events store; list the requesters.
