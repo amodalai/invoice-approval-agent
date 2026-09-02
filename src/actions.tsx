@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { useToolRun } from "@amodalai/react";
 import { DecideModal } from "./components/DecideModal.js";
+import { serial } from "./serial.js";
 import { errorMessage, runTool } from "./tools.js";
 import { latestReview, type Data, type Decision, type InvoiceRow } from "./types.js";
 
 /**
  * The approver's actions on an invoice, shared by the queue and the detail
- * screen. Each review is its own run and several may be in flight; the
- * stores refetch as each one lands.
+ * screen. Reviews queue up and run one at a time: the tool launcher is single
+ * flight and aborts the run in flight when the next one starts.
  */
 export function useInvoiceActions(data: Data) {
   const review = useToolRun<{ invoice_id: string }>("review_invoice");
@@ -17,14 +18,19 @@ export function useInvoiceActions(data: Data) {
   const [target, setTarget] = useState<{ inv: InvoiceRow; decision: Decision } | null>(null);
   const [deciding, setDeciding] = useState(false);
   const [decideError, setDecideError] = useState<string | undefined>();
+  const [enqueue] = useState(serial);
 
-  async function onReview(invoice_id: string) {
+  function onReview(invoice_id: string) {
     setReviewing((s) => new Set(s).add(invoice_id));
     setErrors((m) => {
       const next = new Map(m);
       next.delete(invoice_id);
       return next;
     });
+    void enqueue(() => runReview(invoice_id));
+  }
+
+  async function runReview(invoice_id: string) {
     try {
       await runTool(review, { invoice_id });
       await data.refetch();
@@ -70,7 +76,7 @@ export function useInvoiceActions(data: Data) {
     />
   ) : null;
 
-  return { reviewing, errors, onReview: (id: string) => void onReview(id), onDecide, modal };
+  return { reviewing, errors, onReview, onDecide, modal };
 }
 
 export type InvoiceActions = ReturnType<typeof useInvoiceActions>;

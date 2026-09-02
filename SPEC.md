@@ -458,7 +458,7 @@ src/
 tests/
   policy.test.ts  invoice-review.test.ts  decide-invoice.test.ts  demo-data.test.ts  approval-guard.test.mjs
   submit.test.ts  events.test.ts  reset-demo.test.ts  routes.test.ts  review-invoice-handler.test.ts
-  types.test.ts
+  types.test.ts  serial.test.ts
   helpers.ts                the in-memory store fake, and asserts a handler's store calls and its tool.json uses match each other
 ```
 
@@ -481,6 +481,8 @@ Unit tests, `npm test`:
 - `reset-demo.test.ts`: every store is emptied before the seed, one `reset`
   event.
 - `routes.test.ts`: persona ownership of routes and the redirect.
+- `serial.test.ts`: queued tasks run in order without overlapping, and a
+  rejected one does not stop the next.
 - `types.test.ts`: `usd` shows the cents only when the amount has cents.
 - `approval-guard.test.mjs`: unchanged, plus one case proving the hook
   ignores `store__events__set`.
