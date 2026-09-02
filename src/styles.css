@@ -333,3 +333,69 @@ code {
   color: var(--muted);
   font-size: 12px;
 }
+
+.head__actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.head .sub a {
+  color: var(--accent);
+}
+
+/* The policy, rendered from the same Markdown the reviewer reads. */
+.policy {
+  margin-top: 28px;
+  padding: 16px 20px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.policy summary {
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.policy__body {
+  margin-top: 12px;
+  font-size: 13px;
+}
+
+.policy__body h1 {
+  font-size: 16px;
+  margin: 12px 0 6px;
+}
+
+.policy__body h2 {
+  font-size: 14px;
+  margin: 16px 0 6px;
+}
+
+.policy__body blockquote {
+  margin: 0;
+  padding-left: 12px;
+  border-left: 3px solid var(--border);
+  color: var(--muted);
+}
+
+.policy__body table {
+  border-collapse: collapse;
+  margin: 8px 0;
+}
+
+.policy__body th,
+.policy__body td {
+  border: 1px solid var(--border);
+  padding: 4px 10px;
+  text-align: left;
+}
+
+.policy__body ul {
+  padding-left: 20px;
+}
+
+.policy .sub {
+  margin-top: 12px;
+}

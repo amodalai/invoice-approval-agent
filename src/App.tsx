@@ -4,8 +4,10 @@ import {
   useToolRun,
   useAmodalContext,
   ChatWidget,
+  FormattedMarkdown,
   RuntimeClient,
 } from "@amodalai/react";
+import spendPolicy from "../amodal/knowledge/spend-policy.md?raw";
 
 interface LineItem {
   description: string;
@@ -97,35 +99,27 @@ function RecPill({ inv }: { inv: InvoiceRow }) {
   return <span className={`pill rec-${inv.recommendation}`}>{REC_LABEL[inv.recommendation] ?? inv.recommendation}</span>;
 }
 
+const isDecided = (inv: InvoiceRow) => inv.status === "approved" || inv.status === "rejected";
+
 function Row({
   inv,
   po,
   review,
+  busy,
+  error,
   onReview,
   onDecide,
 }: {
   inv: InvoiceRow;
   po?: PORow;
   review?: ReviewRow;
-  onReview: (invoice_id: string) => Promise<void>;
+  busy: boolean;
+  error?: string;
+  onReview: (invoice_id: string) => void;
   onDecide: (inv: InvoiceRow, decision: Decision) => void;
 }) {
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const decided = inv.status === "approved" || inv.status === "rejected";
+  const decided = isDecided(inv);
   const amountNote = review?.checks?.find((c) => c.name === "amount")?.note?.trim();
-
-  async function runReview() {
-    setBusy(true);
-    setError(null);
-    try {
-      await onReview(inv.invoice_id);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Review failed.");
-    } finally {
-      setBusy(false);
-    }
-  }
 
   return (
     <tr>
@@ -168,7 +162,7 @@ function Row({
           inv.decision_note ? <div className="note">{inv.decision_note}</div> : null
         ) : (
           <>
-            <button className="btn" disabled={busy} onClick={runReview}>
+            <button className="btn" disabled={busy} onClick={() => onReview(inv.invoice_id)}>
               {busy ? "Reviewing…" : inv.reviewed_at ? "Re-review" : "Review"}
             </button>
             {review ? (
@@ -253,6 +247,8 @@ export default function App() {
   const decide = useToolRun<{ invoice_id: string; decision: Decision; note?: string }>("decide_invoice");
   const [seeding, setSeeding] = useState(false);
   const [seedError, setSeedError] = useState<string | null>(null);
+  const [reviewing, setReviewing] = useState<Set<string>>(new Set());
+  const [reviewErrors, setReviewErrors] = useState<Map<string, string>>(new Map());
   const [target, setTarget] = useState<{ inv: InvoiceRow; decision: Decision } | null>(null);
 
   const invoices = (invoicesQ.data ?? [])
@@ -278,9 +274,33 @@ export default function App() {
     }
   }
 
+  // Each review is its own chat run, so several can be in flight at once;
+  // the table refetches as each one lands.
   async function onReview(invoice_id: string) {
-    await runChatCommand(chatClient, `review ${invoice_id}`, "review_invoice");
-    await refetch();
+    setReviewing((s) => new Set(s).add(invoice_id));
+    setReviewErrors((m) => {
+      const next = new Map(m);
+      next.delete(invoice_id);
+      return next;
+    });
+    try {
+      await runChatCommand(chatClient, `review ${invoice_id}`, "review_invoice");
+      await refetch();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Review failed.";
+      setReviewErrors((m) => new Map(m).set(invoice_id, message));
+    } finally {
+      setReviewing((s) => {
+        const next = new Set(s);
+        next.delete(invoice_id);
+        return next;
+      });
+    }
+  }
+
+  const pending = invoices.filter((i) => !isDecided(i) && !reviewing.has(i.invoice_id));
+  function onReviewAll() {
+    for (const inv of pending) void onReview(inv.invoice_id);
   }
 
   async function onConfirmDecision(note: string) {
@@ -299,15 +319,22 @@ export default function App() {
       <header className="head">
         <div className="head__bar">
           <h1>Invoice Approval</h1>
-          <button className="btn" disabled={seeding} onClick={onSeed}>
-            {seeding ? "Loading…" : "Load demo invoices"}
-          </button>
+          <div className="head__actions">
+            <button className="btn btn--ghost" disabled={seeding} onClick={onSeed}>
+              {seeding ? "Loading…" : "Load demo invoices"}
+            </button>
+            <button className="btn" disabled={pending.length === 0} onClick={onReviewAll}>
+              {reviewing.size > 0 ? `Reviewing ${reviewing.size}…` : "Review all"}
+            </button>
+          </div>
         </div>
         <p className="sub">
-          Review vendor invoices against their purchase orders and the fictional spend policy. <em>Review</em> checks
-          one: code matches the purchase order and looks for duplicates, the reviewer subagent applies the policy, and
-          the agent recommends approve, hold, escalate, or reject. <em>Approve</em> and <em>Reject</em> record your
-          decision. The agent recommends; a human decides. It never pays anything.
+          Vendors send Larkspur Co. invoices for things the company ordered. Before an invoice is paid, someone in
+          accounts payable checks it: is there a purchase order for it, does the amount fit, is the vendor billing for
+          what was ordered, and has this invoice been paid already? This agent does that check against the{" "}
+          <a href="#policy">spend policy</a> and recommends <em>approve</em>, <em>hold</em> (ask the vendor first),{" "}
+          <em>escalate</em> (needs a manager), or <em>reject</em>. You make the decision with <em>Approve</em> or{" "}
+          <em>Reject</em>. The agent never pays anything.
         </p>
         {seedError ? <div className="banner error">{seedError}</div> : null}
       </header>
@@ -340,7 +367,9 @@ export default function App() {
                 inv={inv}
                 po={inv.po_number ? poByNumber.get(inv.po_number) : undefined}
                 review={reviewByInvoice.get(inv.invoice_id)}
-                onReview={onReview}
+                busy={reviewing.has(inv.invoice_id)}
+                error={reviewErrors.get(inv.invoice_id)}
+                onReview={(id) => void onReview(id)}
                 onDecide={(i, d) => {
                   decide.reset();
                   setTarget({ inv: i, decision: d });
@@ -350,6 +379,14 @@ export default function App() {
           </tbody>
         </table>
       )}
+
+      <details className="policy" id="policy">
+        <summary>The spend policy the reviewer applies</summary>
+        <FormattedMarkdown className="policy__body">{spendPolicy}</FormattedMarkdown>
+        <p className="sub">
+          Edit <code>amodal/knowledge/spend-policy.md</code> and redeploy to change the rules.
+        </p>
+      </details>
 
       <footer className="foot">
         Fictional demo. Vendors, invoices, purchase orders, and the spend policy are made up. The agent assists; a

@@ -112,7 +112,7 @@ true for every writer, including the chat agent's store tools.
 | `amodal/_types/tool-context.ts`             | Vendored runtime types (`CustomToolContext`, `ToolDefinition`), kept local so the example typechecks offline. |
 | `hooks/approval-guard/`                     | `preToolUse` guard enforcing the hard rules for every writer.                                           |
 | `evals/`                                    | The eval suite: one per demo invoice, a seed smoke test, and a safety eval. Re-run it before promoting. |
-| `src/`                                      | The custom React UI (Vite): one screen, `useStoreQuery` reads, the chat-trigger Review button, the decision modal on `useToolRun`. |
+| `src/`                                      | The custom React UI (Vite): one screen, `useStoreQuery` reads, the chat-trigger Review / Review all buttons, the decision modal on `useToolRun`, and the policy rendered below the table from the same Markdown the reviewer reads. |
 | `tests/`                                    | Unit tests for the code paths (`npm test`). Kept out of `amodal/` and `hooks/` so the runtime's loaders never see them. |
 
 ## Example cases
@@ -140,10 +140,11 @@ variables are needed.
 
 1. Open the invoices screen and click **Load demo invoices**. (Or send `seed`
    in the chat.)
-2. Click **Review** on a row. The recommendation, the amount note (the
-   `invoice_math` numbers, cited by the reviewer), and the issues appear
-   inline. You can also review from chat with `review <id>`; both enter
-   through the same trigger.
+2. Click **Review** on a row, or **Review all** to run every undecided
+   invoice at once. The recommendation, the amount note (the `invoice_math`
+   numbers, cited by the reviewer), and the issues appear inline. You can
+   also review from chat with `review <id>`; both enter through the same
+   trigger. The policy the reviewer applied is expandable below the table.
 3. Click **Approve** on Brightline's 0417 and confirm. The PO's remaining
    balance drops to $0. Now review `inv_brightline_0417_resend`: it is a
    duplicate, and also over the now-exhausted PO.
@@ -197,10 +198,12 @@ The pieces, in the order most people change them:
 - **The stores**: `amodal/stores/*.json`. Add a field, then thread it
   through `examples.ts`, `demo-data.ts`, and the row types in
   `invoice-review.ts` and `src/App.tsx`.
-- **The UI**: `src/App.tsx` is one file: the table, the decision modal, and
-  the floating `ChatWidget`. Reads go through `useStoreQuery`; the Review
-  button sends the chat command; Approve / Reject call `decide_invoice`
-  through `useToolRun`.
+- **The UI**: `src/App.tsx` is one file: the table, the decision modal, the
+  policy panel, and the floating `ChatWidget`. Reads go through
+  `useStoreQuery`; Review and Review all send the chat command, one run per
+  invoice; Approve / Reject call `decide_invoice` through `useToolRun`. The
+  policy panel imports `spend-policy.md` with Vite's `?raw`, so it can never
+  drift from what the reviewer reads.
 - **The chat agent**: `agents/default/AGENT.md` and `agent.json`. The prompt
   lists the demo ids and the rules about what chat may never do.
 - **Evals**: `evals/*.md`. Deterministic lines (`contains:`) for the
