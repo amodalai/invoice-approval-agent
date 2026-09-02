@@ -221,8 +221,13 @@ code {
 }
 
 .pill.rec-escalate {
-  background: #efe7f8;
-  color: #5b2e91;
+  background: #fdebd9;
+  color: #9a4a00;
+}
+
+.pill.rec-returned {
+  background: #eef0ee;
+  color: #4a4a4a;
 }
 
 .pill.rec-reject {
@@ -345,19 +350,6 @@ code {
 }
 
 /* The policy, rendered from the same Markdown the reviewer reads. */
-.policy {
-  margin-top: 28px;
-  padding: 16px 20px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-}
-
-.policy summary {
-  cursor: pointer;
-  font-weight: 600;
-}
-
 .policy__body {
   margin-top: 12px;
   font-size: 13px;
@@ -396,6 +388,108 @@ code {
   padding-left: 20px;
 }
 
-.policy .sub {
-  margin-top: 12px;
+.screen__bar {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 24px;
+}
+
+.screen__bar h2,
+section h2 {
+  margin: 0 0 4px;
+  font-size: 18px;
+}
+
+.screen__bar .sub {
+  max-width: 70ch;
+}
+
+.grid a.name {
+  color: var(--ink);
+  text-decoration: none;
+}
+
+.grid a.name:hover {
+  text-decoration: underline;
+}
+
+.persona {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.persona select {
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.menu {
+  position: relative;
+}
+
+.menu summary {
+  list-style: none;
+  cursor: pointer;
+  padding: 4px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  font-weight: 600;
+}
+
+.menu summary::-webkit-details-marker {
+  display: none;
+}
+
+.menu__item {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  white-space: nowrap;
+  font: inherit;
+  font-size: 13px;
+  padding: 8px 14px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--surface);
+  color: var(--ink);
+  cursor: pointer;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+  z-index: 10;
+}
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin-top: 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.tab {
+  padding: 8px 12px;
+  color: var(--muted);
+  text-decoration: none;
+  font-weight: 500;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+}
+
+.tab.active {
+  color: var(--ink);
+  border-bottom-color: var(--accent);
+}
+
+.banner .btn {
+  margin-left: 10px;
+  padding: 3px 10px;
 }
