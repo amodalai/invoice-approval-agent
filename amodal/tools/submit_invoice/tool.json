@@ -38,8 +38,6 @@
       "store__invoices__query",
       "store__invoices__set",
       "store__purchase_orders__get",
-      "store__purchase_orders__query",
-      "store__purchase_orders__set",
       "store__reviews__set",
       "store__events__set"
     ],

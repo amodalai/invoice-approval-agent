@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { slug, submitInvoice, validateSubmission } from "../amodal/_lib/submit.js";
 import { INVOICES, PURCHASE_ORDERS, invoiceRow, poRow } from "../amodal/_lib/demo-data.js";
-import { assertDeclared } from "./helpers.js";
+import { assertDeclared, assertUsesReachable } from "./helpers.js";
 
 const NOW = "2026-09-01T12:00:00.000Z";
 const OMAR = "Omar Haddad (Engineering)";
@@ -120,7 +120,7 @@ test("a new submission writes the row, appends submitted, and reviews the in-mem
 });
 
 test("a resent invoice number gets its own row with a numeric suffix and is reviewed as a duplicate", async () => {
-  const { deps, store } = fakeDeps();
+  const { deps, store, calls } = fakeDeps();
   const resend = { ...form, vendor_name: "Brightline Cloud Services", invoice_number: "0417", po_number: "PO-1041", total_usd: 12_000, line_items: [{ description: "Hosting", quantity: 1, unit_price_usd: 12_000 }] };
   const out = await submitInvoice(resend, deps);
   assert.equal(out.invoice_id, "inv_brightline_cloud_services_0417");
@@ -128,6 +128,7 @@ test("a resent invoice number gets its own row with a numeric suffix and is revi
   assert.equal(again.invoice_id, "inv_brightline_cloud_services_0417_2");
   assert.equal(again.recommendation, "reject");
   assert.ok(store.has("invoices:inv_brightline_cloud_services_0417") && store.has("invoices:inv_brightline_cloud_services_0417_2"));
+  assertDeclared("submit_invoice", calls.map(([n]) => n));
 });
 
 test("an id another vendor spelling already took gets the numeric suffix", async () => {
@@ -181,4 +182,8 @@ test("a failing review leaves the invoice new, with its submitted event, and ret
   assert.equal(row.status, "new");
   assert.equal(row.review_id, null);
   assert.deepEqual(events().map((e) => e.kind), ["submitted"]);
+});
+
+test("submit_invoice declares no store tool its runs cannot reach", () => {
+  assertUsesReachable("submit_invoice");
 });
