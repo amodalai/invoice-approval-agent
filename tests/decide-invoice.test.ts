@@ -1,44 +1,19 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import decide_invoice from "../amodal/tools/decide_invoice/handler.js";
-import { INVOICES, PURCHASE_ORDERS, invoiceRow, poRow } from "../amodal/_lib/demo-data.js";
 import type { CustomToolContext } from "../amodal/_types/tool-context.js";
-import { assertDeclared } from "./helpers.js";
+import { assertDeclared, fakeStore } from "./helpers.js";
 
 const NOW = "2026-09-01T12:00:00.000Z";
 
 function seededCtx(opts: { reviewed?: string[] } = {}) {
-  const store = new Map<string, Record<string, unknown>>();
-  const tools: string[] = [];
-  for (const p of PURCHASE_ORDERS) store.set(`purchase_orders:${p.po_number}`, poRow(p, NOW));
-  for (const i of INVOICES) store.set(`invoices:${i.invoice_id}`, invoiceRow(i, NOW));
+  const { store, calls, callTool } = fakeStore(NOW);
   for (const id of opts.reviewed ?? []) {
     store.set(`reviews:rev_${id}`, { review_id: `rev_${id}`, invoice_id: id, revision: 1, recommendation: "approve" });
     store.set(`invoices:${id}`, { ...store.get(`invoices:${id}`)!, status: "reviewed", review_id: `rev_${id}` });
   }
-  const ctx: CustomToolContext = {
-    log() {},
-    signal: new AbortController().signal,
-    now: () => Date.parse(NOW),
-    async callTool(name, args) {
-      tools.push(name);
-      const m = /^store__(\w+)__(get|set|query)$/.exec(name)!;
-      const key = (k: string) => `${m[1]}:${k}`;
-      if (m[2] === "get") return (store.get(key(String(args.key))) ?? { error: "not found" }) as never;
-      if (m[2] === "set") {
-        store.set(key(String(args.key)), args.value as Record<string, unknown>);
-        return {} as never;
-      }
-      const where = (args.where ?? {}) as Record<string, unknown>;
-      return {
-        documents: [...store.entries()]
-          .filter(([k]) => k.startsWith(`${m[1]}:`))
-          .map(([, payload]) => ({ payload }))
-          .filter(({ payload }) => Object.entries(where).every(([f, v]) => payload[f] === v)),
-      } as never;
-    },
-  };
-  return { ctx, store, tools };
+  const ctx: CustomToolContext = { log() {}, signal: new AbortController().signal, now: () => Date.parse(NOW), callTool };
+  return { ctx, store, calls };
 }
 
 test("approving a clean reviewed invoice stamps it and books the PO", async () => {
@@ -126,7 +101,7 @@ test("approving against an escalate recommendation needs a note", async () => {
 });
 
 test("each decision appends exactly one event with actor approver, the note, and the revision", async () => {
-  const { ctx, store, tools } = seededCtx({ reviewed: ["inv_brightline_0417", "inv_norwood_2288", "inv_atlas_9911"] });
+  const { ctx, store, calls } = seededCtx({ reviewed: ["inv_brightline_0417", "inv_norwood_2288", "inv_atlas_9911"] });
   store.set("invoices:inv_atlas_9911", { ...store.get("invoices:inv_atlas_9911")!, revision: 2 });
   await decide_invoice({ invoice_id: "inv_brightline_0417", decision: "approved" }, ctx);
   await decide_invoice({ invoice_id: "inv_norwood_2288", decision: "rejected", note: "Over the PO." }, ctx);
@@ -141,13 +116,13 @@ test("each decision appends exactly one event with actor approver, the note, and
       ["inv_atlas_9911", "returned", "approver", "Drop the workshop line.", 2, NOW],
     ],
   );
-  assertDeclared("decide_invoice", tools);
+  assertDeclared("decide_invoice", calls.map(([n]) => n));
 });
 
 test("a demo id missing from the stores is not found: only the review self-seeds", async () => {
-  const { ctx, store, tools } = seededCtx();
+  const { ctx, store, calls } = seededCtx();
   store.clear();
   await assert.rejects(decide_invoice({ invoice_id: "inv_brightline_0417", decision: "rejected" }, ctx), /not found/);
   assert.equal(store.size, 0);
-  assertDeclared("decide_invoice", tools);
+  assertDeclared("decide_invoice", calls.map(([n]) => n));
 });

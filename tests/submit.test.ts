@@ -1,8 +1,8 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 import { slug, submitInvoice, validateSubmission } from "../amodal/_lib/submit.js";
-import { INVOICES, PURCHASE_ORDERS, invoiceRow, poRow } from "../amodal/_lib/demo-data.js";
-import { assertDeclared, assertUsesReachable } from "./helpers.js";
+import { INVOICES, invoiceRow } from "../amodal/_lib/demo-data.js";
+import { assertDeclared, assertUsesReachable, fakeStore } from "./helpers.js";
 
 const NOW = "2026-09-01T12:00:00.000Z";
 const OMAR = "Omar Haddad (Engineering)";
@@ -21,30 +21,11 @@ const form = {
 };
 
 function fakeDeps(reviewerReply = REPLY) {
-  const store = new Map<string, Record<string, unknown>>();
-  for (const p of PURCHASE_ORDERS) store.set(`purchase_orders:${p.po_number}`, poRow(p, NOW));
-  for (const i of INVOICES) store.set(`invoices:${i.invoice_id}`, invoiceRow(i, NOW));
-  const calls: Array<[string, Record<string, unknown>]> = [];
+  const { store, calls, callTool } = fakeStore(NOW);
   let subagentCalls = 0;
   let r = 0;
   const deps = {
-    async callTool(name: string, args: Record<string, unknown>) {
-      calls.push([name, args]);
-      const m = /^store__(\w+)__(get|set|query)$/.exec(name)!;
-      const key = (k: string) => `${m[1]}:${k}`;
-      if (m[2] === "get") return store.get(key(String(args.key))) ?? { error: "not found" };
-      if (m[2] === "set") {
-        store.set(key(String(args.key)), args.value as Record<string, unknown>);
-        return {};
-      }
-      const where = (args.where ?? {}) as Record<string, unknown>;
-      return {
-        documents: [...store.entries()]
-          .filter(([k]) => k.startsWith(`${m[1]}:`))
-          .map(([, payload]) => ({ payload }))
-          .filter(({ payload }) => Object.entries(where).every(([f, v]) => payload[f] === v)),
-      };
-    },
+    callTool,
     async callSubagent() {
       subagentCalls += 1;
       if (reviewerReply === "THROW") throw new Error("reviewer down");

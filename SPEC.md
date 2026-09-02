@@ -459,7 +459,7 @@ tests/
   policy.test.ts  invoice-review.test.ts  decide-invoice.test.ts  demo-data.test.ts  approval-guard.test.mjs
   submit.test.ts  events.test.ts  reset-demo.test.ts  routes.test.ts  review-invoice-handler.test.ts
   types.test.ts
-  helpers.ts                asserts a handler's store calls and its tool.json uses match each other
+  helpers.ts                the in-memory store fake, and asserts a handler's store calls and its tool.json uses match each other
 ```
 
 ## Tests and evals

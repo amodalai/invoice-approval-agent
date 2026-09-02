@@ -13,6 +13,7 @@ import {
   type PORow,
 } from "../amodal/_lib/invoice-review.js";
 import { INVOICES, PURCHASE_ORDERS, invoiceRow, poRow } from "../amodal/_lib/demo-data.js";
+import { fakeStore } from "./helpers.js";
 
 const NOW = "2026-09-01T12:00:00.000Z";
 const inv = (id: string): InvoiceRow => invoiceRow(INVOICES.find((i) => i.invoice_id === id)!, NOW);
@@ -81,29 +82,15 @@ test("storeGetResult treats the runtime's error envelope as missing", () => {
   assert.deepEqual(storeGetResult({ invoice_id: "x" }), { invoice_id: "x" });
 });
 
-function fakeDeps(store: Map<string, Record<string, unknown>>, reviewerReply: string) {
-  const calls: Array<[string, Record<string, unknown>]> = [];
+function fakeDeps(reviewerReply: string, seedAt?: string) {
+  const { store, calls, callTool } = fakeStore(seedAt);
   const traces: string[] = [];
   return {
+    store,
     calls,
     traces,
     deps: {
-      async callTool(name: string, args: Record<string, unknown>) {
-        calls.push([name, args]);
-        const m = /^store__(\w+)__(get|set|query|list|remove)$/.exec(name)!;
-        const key = (k: string) => `${m[1]}:${k}`;
-        if (m[2] === "get") return store.get(key(String(args.key))) ?? { error: "not found" };
-        if (m[2] === "set") {
-          store.set(key(String(args.key)), args.value as Record<string, unknown>);
-          return {};
-        }
-        const where = (args.where ?? {}) as Record<string, unknown>;
-        const docs = [...store.entries()]
-          .filter(([k]) => k.startsWith(`${m[1]}:`))
-          .map(([, payload]) => ({ payload }))
-          .filter(({ payload }) => Object.entries(where).every(([f, v]) => payload[f] === v));
-        return { documents: docs };
-      },
+      callTool,
       async callSubagent() {
         return reviewerReply;
       },
@@ -125,8 +112,7 @@ const REPLY = JSON.stringify({
 });
 
 test("on fresh stores the review seeds the dataset and reviews the in-memory example", async () => {
-  const store = new Map<string, Record<string, unknown>>();
-  const { deps, calls } = fakeDeps(store, REPLY);
+  const { deps, store, calls } = fakeDeps(REPLY);
   const out = await runInvoiceReview("inv_brightline_0417", deps);
   assert.equal(out.found, true);
   assert.equal(out.recommendation, "approve");
@@ -144,11 +130,8 @@ test("on fresh stores the review seeds the dataset and reviews the in-memory exa
 });
 
 test("every run keeps its own review row, the invoice names the latest, and a reviewed event is appended", async () => {
-  const store = new Map<string, Record<string, unknown>>();
-  for (const p of PURCHASE_ORDERS) store.set(`purchase_orders:${p.po_number}`, poRow(p, NOW));
-  for (const i of INVOICES) store.set(`invoices:${i.invoice_id}`, invoiceRow(i, NOW));
   let t = Date.parse(NOW);
-  const { deps } = fakeDeps(store, REPLY);
+  const { deps, store } = fakeDeps(REPLY, NOW);
   deps.now = () => new Date(t);
   const first = await runInvoiceReview("inv_norwood_2288", deps);
   t += 60_000;
@@ -165,8 +148,7 @@ test("every run keeps its own review row, the invoice names the latest, and a re
 });
 
 test("a preloaded invoice is reviewed without reading the stores", async () => {
-  const store = new Map<string, Record<string, unknown>>();
-  const { deps, calls } = fakeDeps(store, REPLY);
+  const { deps, store, calls } = fakeDeps(REPLY);
   const invoice = { ...inv("inv_pixelforge_77"), revision: 2 };
   const out = await runInvoiceReview("inv_pixelforge_77", deps, { invoice, others: [] });
   assert.equal(out.recommendation, "approve");
@@ -176,8 +158,7 @@ test("a preloaded invoice is reviewed without reading the stores", async () => {
 });
 
 test("code clamps an approve the facts forbid and folds the blockers into the issues", async () => {
-  const store = new Map<string, Record<string, unknown>>();
-  const { deps, traces } = fakeDeps(store, REPLY);
+  const { deps, traces } = fakeDeps(REPLY);
   const out = await runInvoiceReview("inv_norwood_2288", deps);
   assert.equal(out.recommendation, "escalate");
   assert.match(out.issues![0], /over the PO's remaining balance/);
@@ -185,18 +166,14 @@ test("code clamps an approve the facts forbid and folds the blockers into the is
 });
 
 test("a duplicate is rejected whatever the reviewer says, from the stored rows", async () => {
-  const store = new Map<string, Record<string, unknown>>();
-  for (const p of PURCHASE_ORDERS) store.set(`purchase_orders:${p.po_number}`, poRow(p, NOW));
-  for (const i of INVOICES) store.set(`invoices:${i.invoice_id}`, invoiceRow(i, NOW));
-  const { deps } = fakeDeps(store, REPLY);
+  const { deps } = fakeDeps(REPLY, NOW);
   const out = await runInvoiceReview("inv_brightline_0417_resend", deps);
   assert.equal(out.recommendation, "reject");
   assert.equal(out.issues![0], "duplicate of inv_brightline_0417");
 });
 
 test("an unknown invoice reports found: false without writing", async () => {
-  const store = new Map<string, Record<string, unknown>>();
-  const { deps, calls } = fakeDeps(store, REPLY);
+  const { deps, calls } = fakeDeps(REPLY);
   assert.deepEqual(await runInvoiceReview("inv_nope", deps), { found: false, invoice_id: "inv_nope" });
   assert.ok(!calls.some(([n]) => n.endsWith("__set")));
 });
