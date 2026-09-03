@@ -1,5 +1,7 @@
 # Invoice Approval Example
 
+![The approver's queue: five invoices, each with the agent's recommendation and the issues behind it](docs/screenshot.png)
+
 An Amodal agent that reviews vendor invoices before payment, in a two-persona
 accounts-payable demo for a fictional company, Larkspur Co. A requester
 submits an invoice; the agent matches the purchase order and checks for
@@ -150,6 +152,7 @@ true for every writer, including the chat agent's store tools.
 | `evals/`                                    | The eval suite: one per live invoice, a seed smoke test, a history question, and two safety evals. Re-run it before promoting. |
 | `src/`                                      | The custom React UI (Vite): `App.tsx` (header, persona, hash routes, auto-seed), `routes.ts`, `persona.ts`, `types.ts`, `screens/` (Queue, InvoiceDetail, PurchaseOrders, History, Policy, Submit, MyInvoices), and `components/`. |
 | `tests/`                                    | Unit tests for the code paths (`npm test`). Kept out of `amodal/` and `hooks/` so the runtime's loaders never see them. |
+| `docs/screenshot.png`                       | The screenshot at the top of this README, and the source for the marketplace card image. |
 
 ## Example cases
 
