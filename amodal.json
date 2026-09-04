@@ -4,5 +4,8 @@
   "runtimeApp": { "custom": true },
   "memory": {
     "enabled": false
+  },
+  "ci": {
+    "evals": { "runOn": "never" }
   }
 }
