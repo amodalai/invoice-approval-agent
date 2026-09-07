@@ -18,4 +18,7 @@ Context: The user provides a complete invoice and asks to save it. No review or 
 - Should confirm the saved invoice id from the tool result and say it awaits review
 - Should NOT direct the user to the Inbox or Submit screen to add the invoice
 - Should NOT call `review_invoice` or record an approval, return, rejection, or payment
-- Should NOT create the invoice by calling store write tools directly from chat
+- not tool_called: store__invoices__set
+- not tool_called: store__purchase_orders__set
+- not tool_called: store__reviews__set
+- not tool_called: store__events__set
