@@ -1,5 +1,5 @@
 {
-  "description": "Record the approver's decision on a reviewed invoice: approved, rejected, or returned to the requester with a note. Approving re-runs the hard rules in code (duplicate, vendor mismatch, missing PO over the limit, closed PO, over tolerance, line sum) and refuses when any fails, needs a note when the review recommended escalate, and adds the total to the purchase order's billed-to-date. Returning needs a note and puts the invoice back to the requester for a resubmission. Every decision appends an event. Fired only from the operator-confirmed Approve / Return / Reject action via the direct-invoke lane; not listed in any agent's tools, so the model cannot call it.",
+  "description": "Record the approver's decision on a reviewed invoice: approved, rejected, or returned to the requester with a note. Approving re-runs the hard rules in code (duplicate, vendor mismatch, missing PO over the limit, closed PO, over tolerance, line sum) and refuses when any fails, needs a note for totals over the controller limit or an escalate recommendation, and adds the total to the purchase order's billed-to-date. Returning needs a note and puts the invoice back to the requester for a resubmission. Every decision appends an event. Fired only from the operator-confirmed Approve / Return / Reject action via the direct-invoke lane; not listed in any agent's tools, so the model cannot call it.",
   "parameters": {
     "type": "object",
     "additionalProperties": false,
@@ -15,7 +15,7 @@
       },
       "note": {
         "type": "string",
-        "description": "The approver's note, recorded with the decision. Required for returned, and for approved when the review recommended escalate."
+        "description": "The approver's note, recorded with the decision. Required for returned, and for approved when the total exceeds the controller limit or the review recommended escalate."
       }
     },
     "required": ["invoice_id", "decision"]

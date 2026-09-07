@@ -65,9 +65,13 @@ export default async function decide_invoice(params: DecideInvoiceParams, ctx: C
 
   if (decision === "returned" && !note) throw new Error(`Returning ${invoice_id} needs a note for the requester.`);
   if (decision === "approved") {
-    const blockers = approvalBlockers(checkInvoice(invoice, po, others));
+    const facts = checkInvoice(invoice, po, others);
+    const blockers = approvalBlockers(facts);
     if (blockers.length > 0) {
       throw new Error(`Cannot approve ${invoice_id}: ${blockers.join("; ")}.`);
+    }
+    if (facts.math.over_controller_limit && !note) {
+      throw new Error(`Approving ${invoice_id} over the controller limit needs a note confirming controller sign-off.`);
     }
     if (review.recommendation === "escalate" && !note) {
       throw new Error(`Approving ${invoice_id} against an escalate recommendation needs a note.`);

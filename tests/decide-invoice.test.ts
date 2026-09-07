@@ -100,6 +100,25 @@ test("approving against an escalate recommendation needs a note", async () => {
   assert.equal(store.get("invoices:inv_brightline_0417")!.status, "approved");
 });
 
+test("the controller threshold requires a note independently of the reviewer's recommendation", async () => {
+  for (const recommendation of ["approve", "hold", "reject"]) {
+    const { ctx, store } = seededCtx({ reviewed: ["inv_brightline_0417"] });
+    store.set("reviews:rev_inv_brightline_0417", { ...store.get("reviews:rev_inv_brightline_0417")!, recommendation });
+    store.set("invoices:inv_brightline_0417", {
+      ...store.get("invoices:inv_brightline_0417")!,
+      total_usd: 30_000,
+      line_items: [{ description: "Hosting", quantity: 1, unit_price_usd: 30_000 }],
+    });
+    store.set("purchase_orders:PO-1041", { ...store.get("purchase_orders:PO-1041")!, amount_usd: 40_000 });
+
+    await assert.rejects(decide_invoice({ invoice_id: "inv_brightline_0417", decision: "approved" }, ctx), /controller.*note/);
+
+    assert.equal(store.get("purchase_orders:PO-1041")!.billed_to_date_usd, 0);
+    await decide_invoice({ invoice_id: "inv_brightline_0417", decision: "approved", note: "Controller signed off." }, ctx);
+    assert.equal(store.get("purchase_orders:PO-1041")!.billed_to_date_usd, 30_000);
+  }
+});
+
 test("each decision appends exactly one event with actor approver, the note, and the revision", async () => {
   const { ctx, store, calls } = seededCtx({ reviewed: ["inv_brightline_0417", "inv_norwood_2288", "inv_atlas_9911"] });
   store.set("invoices:inv_atlas_9911", { ...store.get("invoices:inv_atlas_9911")!, revision: 2 });
