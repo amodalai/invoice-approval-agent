@@ -4,8 +4,8 @@ import { REQUESTERS } from "../../amodal/_lib/examples.js";
 import { SAMPLES } from "../samples.js";
 import { errorMessage, runTool } from "../tools.js";
 
-type Phase = "idle" | "reading" | "reviewing";
-const LABEL: Record<Phase, string> = { idle: "Read and review", reading: "Reading the document…", reviewing: "Reviewing…" };
+type Phase = "idle" | "reading" | "reviewing" | "finishing";
+const LABEL: Record<Phase, string> = { idle: "Read and review", reading: "Reading the document…", reviewing: "Reviewing…", finishing: "Finishing…" };
 
 /**
  * Paste an invoice as the vendor sent it. `intake_invoice` extracts and
@@ -19,22 +19,33 @@ export function Intake({ review, onDone, onCancel }: { review: boolean; onDone: 
   const [requester, setRequester] = useState("");
   const [phase, setPhase] = useState<Phase>("idle");
   const [error, setError] = useState<string | null>(null);
+  const [saved, setSaved] = useState<{ invoice_id: string; reviewed: boolean } | null>(null);
+  const locked = phase !== "idle" || saved !== null;
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
-    setPhase("reading");
     try {
-      const out = await runTool<{ document: string; requester?: string }, { invoice_id: string }>(intake, {
-        document: text,
-        ...(requester ? { requester } : {}),
-      });
-      if (!out) throw new Error("The document was not read.");
-      if (review) {
-        setPhase("reviewing");
-        await runTool(reviewRun, { invoice_id: out.invoice_id });
+      let invoice = saved;
+      if (!invoice) {
+        setPhase("reading");
+        const out = await runTool<{ document: string; requester?: string }, { invoice_id: string }>(intake, {
+          document: text,
+          ...(requester ? { requester } : {}),
+        });
+        if (!out) throw new Error("The document was not read.");
+        invoice = { invoice_id: out.invoice_id, reviewed: false };
+        setSaved(invoice);
       }
-      await onDone(out.invoice_id);
+      if (review && !invoice.reviewed) {
+        setPhase("reviewing");
+        await runTool(reviewRun, { invoice_id: invoice.invoice_id });
+        invoice = { ...invoice, reviewed: true };
+        setSaved(invoice);
+      }
+      setPhase("finishing");
+      await onDone(invoice.invoice_id);
+      setSaved(null);
       setText("");
     } catch (err) {
       setError(errorMessage(err, "The document could not be read."));
@@ -53,7 +64,7 @@ export function Intake({ review, onDone, onCancel }: { review: boolean; onDone: 
       <div className="chips">
         <span className="muted-text">Try one:</span>
         {SAMPLES.map((s) => (
-          <button key={s.label} type="button" className="chip" onClick={() => setText(s.text)}>
+          <button key={s.label} type="button" className="chip" disabled={locked} onClick={() => setText(s.text)}>
             {s.label}
           </button>
         ))}
@@ -61,6 +72,7 @@ export function Intake({ review, onDone, onCancel }: { review: boolean; onDone: 
       <textarea
         className="intake__text"
         value={text}
+        disabled={locked}
         onChange={(e) => setText(e.target.value)}
         placeholder="Subject: Invoice 9920 for PO-1063…"
         spellCheck={false}
@@ -68,7 +80,7 @@ export function Intake({ review, onDone, onCancel }: { review: boolean; onDone: 
       <div className="intake__foot">
         <label className="intake__who">
           Requested by
-          <select value={requester} onChange={(e) => setRequester(e.target.value)}>
+          <select disabled={locked} value={requester} onChange={(e) => setRequester(e.target.value)}>
             <option value="">Whoever the document or the purchase order names</option>
             {REQUESTERS.map((r) => (
               <option key={r} value={r}>
@@ -84,11 +96,12 @@ export function Intake({ review, onDone, onCancel }: { review: boolean; onDone: 
             </button>
           ) : null}
           <button className="btn" type="submit" disabled={phase !== "idle" || !text.trim()}>
-            {LABEL[phase]}
+            {phase === "idle" && saved ? "Retry" : LABEL[phase]}
           </button>
         </div>
       </div>
       {error ? <div className="banner error">{error}</div> : null}
+      {error && saved ? <p className="sub">The invoice is saved. Retry to finish processing it.</p> : null}
     </form>
   );
 }
