@@ -71,6 +71,33 @@ test("a pasted document becomes a new invoice with a received event, unreviewed"
   assertDeclared("intake_invoice", calls.map(([n]) => n));
 });
 
+test("extractor lifecycle fields cannot resubmit an existing invoice", async () => {
+  const invoice_id = "inv_atlas_9911";
+  const { deps, store, events } = fakeDeps({
+    ...extracted,
+    invoice_id,
+    revision: 9,
+    status: "approved",
+    review_id: "injected-review",
+    received_at: "2020-01-01T00:00:00.000Z",
+  });
+  const original = { ...store.get(`invoices:${invoice_id}`)!, status: "returned", returned_note: "Correct the amount." };
+  store.set(`invoices:${invoice_id}`, structuredClone(original));
+
+  const out = await intakeInvoice({ document: "Invoice 9920" }, deps);
+
+  assert.deepEqual(store.get(`invoices:${invoice_id}`), original);
+  assert.equal(out.invoice_id, "inv_atlas_consulting_group_9920");
+  assert.equal(out.revision, 1);
+  assert.equal(out.invoice.invoice_id, undefined);
+  const row = store.get(`invoices:${out.invoice_id}`)!;
+  assert.equal(row.revision, 1);
+  assert.equal(row.status, "new");
+  assert.equal(row.review_id, null);
+  assert.equal(row.received_at, NOW);
+  assert.deepEqual(events().map((e) => [e.invoice_id, e.kind, e.revision]), [[out.invoice_id, "received", 1]]);
+});
+
 test("the requester comes from the document, else the purchase order, else the caller, else an error", async () => {
   const named = fakeDeps({ ...extracted, requester: MAYA });
   assert.equal((await intakeInvoice({ document: "x", requester: OMAR }, named.deps)).invoice.requester, MAYA);

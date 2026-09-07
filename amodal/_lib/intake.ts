@@ -64,7 +64,7 @@ export async function intakeInvoice(input: IntakeInput, deps: ReviewDeps) {
   const requester = text(found.requester) || po?.requester || text(input.requester);
   if (!requester) throw new Error("Could not tell who requested this work. Pick a requester and try again.");
 
-  const params = validateSubmission({ ...found, po_number, requester });
+  const params = validateSubmission({ ...found, invoice_id: undefined, po_number, requester });
   const loaded = await writeSubmission(params, deps, { kind: "received", actor: "agent", note: "Extracted from a pasted document." });
   deps.trace?.(`Wrote ${loaded.invoice.invoice_id}: ${params.vendor_name} #${params.invoice_number}, ${params.line_items.length} line(s).`);
   return { invoice_id: loaded.invoice.invoice_id, revision: 1, invoice: params };
