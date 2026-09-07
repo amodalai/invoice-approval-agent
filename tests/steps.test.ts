@@ -18,6 +18,23 @@ test("a clean invoice passes the three code checks and leaves the reviewer's ste
   assert.equal(steps[3].label, "Reviewer reading 1 line item against what PO-1041 describes");
 });
 
+test("the amount step distinguishes remaining balance from permitted tolerance", () => {
+  for (const [total, label, status] of [
+    [11_950, "$11,950 fits the $12,000 remaining", "pass"],
+    [12_000, "$12,000 fits the $12,000 remaining", "pass"],
+    [12_050, "$12,050 is $50 over the balance, within the $240 tolerance", "pass"],
+    [12_240, "$12,240 is $240 over the balance, within the $240 tolerance", "pass"],
+    [12_241, "$12,241 is $241 over the balance, past the $240 tolerance", "fail"],
+  ] as const) {
+    const invoice = {
+      ...inv("inv_brightline_0417"),
+      total_usd: total,
+      line_items: [{ description: "Hosting", quantity: 1, unit_price_usd: total }],
+    };
+    assert.deepEqual(reviewSteps(invoice, po("PO-1041"), all)[2], { label, status });
+  }
+});
+
 test("the duplicate, the over-tolerance amount, and the missing order each fail or flag their step", () => {
   const dup = reviewSteps(inv("inv_brightline_0417_resend"), po("PO-1041"), all);
   assert.equal(dup[1].status, "fail");

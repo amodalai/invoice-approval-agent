@@ -30,7 +30,9 @@ export function reviewSteps(inv: InvoiceRow, po: PORow | undefined, others: Invo
     : po && m.within_tolerance === false
       ? { label: `${usd(inv.total_usd)} is ${usd(m.variance_usd!)} over the balance, past the ${usd(m.tolerance_usd!)} tolerance`, status: "fail" }
       : po
-        ? { label: `${usd(inv.total_usd)} fits the ${usd(m.po_remaining_usd!)} remaining`, status: "pass" }
+        ? m.variance_usd! > 0
+          ? { label: `${usd(inv.total_usd)} is ${usd(m.variance_usd!)} over the balance, within the ${usd(m.tolerance_usd!)} tolerance`, status: "pass" }
+          : { label: `${usd(inv.total_usd)} fits the ${usd(m.po_remaining_usd!)} remaining`, status: "pass" }
         : { label: `The lines add up to ${usd(inv.total_usd)}`, status: "pass" };
   const n = inv.line_items.length;
   const judgment: Step = {
