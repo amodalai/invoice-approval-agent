@@ -8,6 +8,7 @@ import { StatusPill } from "./StatusPill.js";
 
 function Verdict({ inv, data, actions }: { inv: InvoiceRow; data: Data; actions: InvoiceActions }) {
   if (actions.reviewing.has(inv.invoice_id)) {
+    if (actions.activeReview !== inv.invoice_id) return <span className="muted-text">Queued for review…</span>;
     const po = inv.po_number ? data.pos.get(inv.po_number) : undefined;
     return <ReviewSteps steps={reviewSteps(inv, po, data.invoices.filter((o) => o.vendor_name === inv.vendor_name))} />;
   }

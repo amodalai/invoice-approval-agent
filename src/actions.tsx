@@ -14,6 +14,7 @@ export function useInvoiceActions(data: Data) {
   const review = useToolRun<{ invoice_id: string }>("review_invoice");
   const decide = useToolRun<{ invoice_id: string; decision: Decision; note?: string }>("decide_invoice");
   const [reviewing, setReviewing] = useState<Set<string>>(new Set());
+  const [activeReview, setActiveReview] = useState<string | undefined>();
   const [errors, setErrors] = useState<Map<string, string>>(new Map());
   const [target, setTarget] = useState<{ inv: InvoiceRow; decision: Decision } | null>(null);
   const [deciding, setDeciding] = useState(false);
@@ -31,12 +32,14 @@ export function useInvoiceActions(data: Data) {
   }
 
   async function runReview(invoice_id: string) {
+    setActiveReview(invoice_id);
     try {
       await runTool(review, { invoice_id });
       await data.refetch();
     } catch (err) {
       setErrors((m) => new Map(m).set(invoice_id, errorMessage(err, "Review failed.")));
     } finally {
+      setActiveReview(undefined);
       setReviewing((s) => {
         const next = new Set(s);
         next.delete(invoice_id);
@@ -76,7 +79,7 @@ export function useInvoiceActions(data: Data) {
     />
   ) : null;
 
-  return { reviewing, errors, onReview, onDecide, modal };
+  return { reviewing, activeReview, errors, onReview, onDecide, modal };
 }
 
 export type InvoiceActions = ReturnType<typeof useInvoiceActions>;

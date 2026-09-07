@@ -10,6 +10,8 @@ export function Inbox({ data }: { data: Data }) {
   const invoices = data.invoices
     .filter((i) => i.status === "new" || i.status === "reviewed" || i.status === "returned")
     .sort((a, b) => b.received_at.localeCompare(a.received_at));
+  const queued = actions.reviewing.size - (actions.activeReview ? 1 : 0);
+  const reviewLabel = actions.activeReview ? `Reviewing 1${queued ? ` · ${queued} queued` : ""}…` : queued ? `Queued ${queued}…` : undefined;
   const pending = invoices.filter((i) => i.status === "new" && !actions.reviewing.has(i.invoice_id));
 
   return (
@@ -30,7 +32,7 @@ export function Inbox({ data }: { data: Data }) {
             Paste an invoice
           </button>
           <button className="btn" disabled={pending.length === 0} onClick={() => pending.forEach((i) => actions.onReview(i.invoice_id))}>
-            {actions.reviewing.size > 0 ? `Reviewing ${actions.reviewing.size}…` : pending.length > 1 ? `Review all ${pending.length}` : "Review"}
+            {reviewLabel ?? (pending.length > 1 ? `Review all ${pending.length}` : "Review")}
           </button>
         </div>
       </div>

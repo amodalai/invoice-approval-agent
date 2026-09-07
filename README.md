@@ -108,13 +108,14 @@ undeclared calls fail closed:
    one), stamps the invoice `reviewed` with the review's id, and appends a
    `reviewed` event.
 
-The invoke lane returns only the run's result, so the inbox shows the review
-happening from its own side: `src/steps.ts` runs the same `checkInvoice` the
-tool runs, in the browser, and reveals its three findings one at a time
-(purchase order, duplicate, arithmetic) while the run is in flight, with the
-reviewer's judgment as the pending step until the result lands. Nothing on
-screen is invented: the code checks are deterministic, and the one step only
-the run can settle is shown as pending.
+The invoke lane returns only the run's result. Queued invoices show
+"Queued for review" until their run starts. During the active run,
+`src/steps.ts` runs `checkInvoice` on the browser's loaded data and reveals
+its findings one at a time (purchase order, duplicate, arithmetic), with
+the reviewer's judgment pending until the result arrives. These are
+client-side checks while waiting for the review result, not streamed
+execution events. The tool reads the stores separately, so its result can
+reflect data changes the browser has not fetched.
 
 The invoice's `status` is the human-owned lane:
 
@@ -223,11 +224,13 @@ variables are needed.
 1. Open the app. It loads the demo dataset on its own the first time
    ("Loading the demo…"), then shows the approver's **Inbox** with the five
    live invoices, none reviewed yet.
-2. Click **Review** on Atlas's 9911. The row shows the review's steps as they
-   happen: the purchase order found, no duplicate, the amount within the
-   balance, then the reviewer reading the line items. It lands on **Hold**
+2. Click **Review** on Atlas's 9911. The row shows client-side checks while
+   waiting for the review result: the purchase order found, no duplicate,
+   the amount within the balance, then the reviewer judgment pending. It
+   lands on **Hold**
    with one sentence: the marketing workshop is not what PO-1063 covers.
-   **Review all** does the same for the rest, one at a time.
+   **Review all** queues the rest and reviews them one at a time. Waiting
+   rows show "Queued for review"; the header counts active and queued runs.
 3. Click **Paste an invoice**, pick **Atlas email, phase 2**, and click
    **Read and review**. The agent reads the email, the row appears, and its
    review runs in front of you: hold, because travel is not consulting
@@ -307,8 +310,8 @@ The pieces, in the order most people change them:
   `src/types.ts`. A store needs `"deletable": true` for `store__*__remove`.
 - **The UI**: `src/App.tsx` is the shell (rail, persona switch, hash
   routes from `routes.ts`, the self-seed on first open, the reset modal);
-  each tab is a file under `src/screens/`. The inbox's live steps come from
-  `src/steps.ts`, which runs the same `checkInvoice` as the tool; keep the
+  each tab is a file under `src/screens/`. The inbox's client-side checks
+  come from `src/steps.ts`, which runs the same `checkInvoice` as the tool; keep the
   two in step when a hard rule changes. `PRIMARY_DECISION` in `src/types.ts`
   maps a recommendation to the row's leading button. Reads go through `useStoreQuery`;
   every write goes through `useToolRun` and `runTool` in `src/tools.ts`,

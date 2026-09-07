@@ -30,7 +30,7 @@ demo" button.
 | What a requester submits | An invoice, with or without a purchase order | The data model and the policy already cover it. No new rules. |
 | Intake | A pasted document, read by an extractor subagent into the same fields the form takes | Invoices arrive as emails and PDFs. Extraction is the visible AI step, and the form remains for a resubmit. |
 | Review timing | The form reviews in the same run; the intake writes only, and the UI runs the review next | The requester sees a result without pressing a button. The inbox shows the review's steps for an invoice it already holds, which it cannot do for one that does not exist yet. |
-| Live steps | The browser runs `checkInvoice` itself and reveals its findings while the run is in flight | The invoke lane returns only the result. The code checks are deterministic, so showing them from the browser invents nothing; the reviewer's judgment stays a pending step. |
+| Review progress | Queued rows show "Queued for review". During the active run, the browser reveals `checkInvoice` findings from its loaded data | The invoke lane returns only the result. Client-side checks are not streamed execution events and can differ if store data changes; the reviewer's judgment stays pending. |
 | Row content | A recommendation and one sentence; checks, issues, and arithmetic on the invoice page | A reader scans the inbox; the reviewer writes the sentence, and a clamp replaces it with the rule that won. |
 | Primary action | The decision the recommendation points at leads the row | The flow reads as "agent proposes, human confirms" without explanation. |
 | Lifecycle | Approver can return an invoice; requester edits and resubmits | Gives `hold` a human path, at the cost of one status and one decision value. |
@@ -353,15 +353,18 @@ list live on the invoice page.
 The recommendation cell shows the pill (`approve`, `hold`, `escalate`,
 `reject`, or "Returned", or "Not reviewed") and, under it, the review's
 one-sentence `reason` (the summary when a row has none) or the return note.
-While a review runs it shows the steps instead: the three code findings
-from `reviewSteps` (purchase order, duplicate, arithmetic), revealed one at
-a time, then the reviewer's judgment as a pending step until the run
-resolves.
+Queued rows show "Queued for review". During the active run the cell shows
+client-side checks from `reviewSteps` (purchase order, duplicate,
+arithmetic), revealed one at a time, then the reviewer's judgment as a
+pending step until the result arrives. The browser computes these checks
+from loaded data; they are not streamed execution events. The tool reads
+the stores separately and can see changes the browser has not fetched.
 
 Actions per row: **Review** on a `new` row; on a `reviewed` row the decision
 `PRIMARY_DECISION` maps the recommendation to, as the leading button, with
-the other two beside it. Each opens the confirm modal. Nothing during a
-review. **Review all** in the header reviews every `new` row, one at a time.
+the other two beside it. Each opens the confirm modal. Actions are hidden
+for queued and active reviews. **Review all** in the header reviews every
+`new` row, one at a time. The header counts active and queued runs separately.
 A row's vendor cell links to the invoice detail.
 
 **Paste an invoice** in the header opens the intake panel above the table:

@@ -1,27 +1,18 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { setImmediate } from "node:timers/promises";
-import ts from "typescript";
 import { REQUESTERS } from "../amodal/_lib/examples.js";
 import { SAMPLES } from "../src/samples.js";
 import * as tools from "../src/tools.js";
 
-type Element = { type: string; props: Record<string, any> };
+import { loadUI, hooks, jsxRuntime, walk } from "./ui.js";
 
 function mount({ review = true, failReview = false, failDone = false, failIntake = false } = {}) {
   const calls = { intake: [] as unknown[], review: [] as string[], done: [] as string[] };
-  const state: unknown[] = [];
-  let cursor = 0;
+  const state = hooks();
   const modules: Record<string, unknown> = {
-    react: {
-      useState(initial: unknown) {
-        const index = cursor++;
-        if (!(index in state)) state[index] = initial;
-        return [state[index], (value: unknown) => { state[index] = value; }];
-      },
-    },
-    "react/jsx-runtime": { jsx: (type: string, props: Element["props"]) => ({ type, props }), jsxs: (type: string, props: Element["props"]) => ({ type, props }) },
+    react: state.react,
+    "react/jsx-runtime": jsxRuntime,
     "@amodalai/react": {
       useToolRun(name: string) {
         return { async run(input: { invoice_id: string }) {
@@ -46,17 +37,10 @@ function mount({ review = true, failReview = false, failDone = false, failIntake
     "../samples.js": { SAMPLES },
     "../tools.js": tools,
   };
-  const compiled = ts.transpileModule(readFileSync(new URL("../src/components/Intake.tsx", import.meta.url), "utf8"), {
-    compilerOptions: { module: ts.ModuleKind.CommonJS, jsx: ts.JsxEmit.ReactJSX },
-  }).outputText;
-  const exports: { Intake?: (props: unknown) => Element } = {};
-  new Function("require", "exports", compiled)((name: string) => {
-    assert.ok(name in modules, `Unexpected import: ${name}`);
-    return modules[name];
-  }, exports);
+  const { Intake } = loadUI(new URL("../src/components/Intake.tsx", import.meta.url), modules);
   const render = () => {
-    cursor = 0;
-    return exports.Intake!({ review, async onDone(id: string) {
+    state.reset();
+    return Intake({ review, async onDone(id: string) {
       calls.done.push(id);
       if (failDone) {
         failDone = false;
@@ -64,12 +48,6 @@ function mount({ review = true, failReview = false, failDone = false, failIntake
       }
     } });
   };
-  function walk(node: unknown): Element[] {
-    if (Array.isArray(node)) return node.flatMap(walk);
-    if (!node || typeof node !== "object" || !("props" in node)) return [];
-    const element = node as Element;
-    return [element, ...walk(element.props.children)];
-  }
   const elements = () => walk(render());
   const find = (type: string) => elements().find((element) => element.type === type)!;
   const button = () => elements().find((element) => element.props.type === "submit")!;
