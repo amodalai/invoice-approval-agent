@@ -365,6 +365,7 @@ export async function runInvoiceReview(
         total_usd: invoice.total_usd,
         line_items: invoice.line_items,
         notes: invoice.notes ?? null,
+        requester: invoice.requester ?? null,
       },
       purchase_order: po
         ? {

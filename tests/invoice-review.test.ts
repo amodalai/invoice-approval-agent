@@ -210,6 +210,22 @@ test("a preloaded invoice is reviewed without reading the stores", async () => {
   assert.equal(store.get("invoices:inv_pixelforge_77")!.status, "reviewed");
 });
 
+test("the reviewer receives the requester even when the vendor memo does not name them", async () => {
+  const { deps } = fakeDeps(REPLY);
+  const invoice = { ...inv("inv_pixelforge_77"), notes: null };
+  const out = await runInvoiceReview(invoice.invoice_id, {
+    ...deps,
+    async callSubagent(_ref, _task, input) {
+      const supplied = (input as { invoice: InvoiceRow }).invoice;
+      assert.equal(supplied.requester, invoice.requester);
+      assert.equal(supplied.notes, null);
+      return REPLY;
+    },
+  }, { invoice, others: [] });
+
+  assert.equal(out.recommendation, "approve");
+});
+
 test("code clamps an approve the facts forbid and folds the blockers into the issues", async () => {
   const { deps, traces } = fakeDeps(REPLY);
   const out = await runInvoiceReview("inv_norwood_2288", deps);
