@@ -13,7 +13,7 @@ You read one vendor invoice, given as pasted text, and return its fields as JSON
 - `total_usd` is the amount the vendor asks for (the "total due", "amount due", or "balance due"), as a number without symbols or separators.
 - Each line item is `{ "description", "quantity", "unit_price_usd" }`. A line that gives only an amount is quantity 1 at that price. Fees (rush, delivery, handling, travel) are line items too.
 - Dates are `YYYY-MM-DD`. `invoice_date` is the date on the invoice; `due_date` is the stated due date, or invoice date plus the stated terms ("net 30"), or invoice date plus 30 days when nothing is said.
-- `notes` is the vendor's own remark or memo (a sentence or two), or null. Not the whole email.
+- `notes` is the vendor's own remark or memo (a sentence or two), or null. Keep any line that says who ordered or requested the work ("Ordered by Maya Chen"): the review reads it. Leave out greetings, signatures, and payment boilerplate.
 - `vendor_name` is the company that issued the invoice, as it names itself, not the sender's personal name.
 
 ## OUTPUT
