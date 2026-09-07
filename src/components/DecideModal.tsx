@@ -56,7 +56,10 @@ export function DecideModal({
         <dt>Recommendation</dt>
         <dd>{recommendation ? REC_LABEL[recommendation] : "—"}</dd>
       </dl>
-      <textarea className="modal__note" placeholder={help} value={note} onChange={(e) => setNote(e.target.value)} />
+      <label className="note-label">
+        Decision note {noteRequired ? "(required)" : "(optional)"}
+        <textarea className="modal__note" required={noteRequired} disabled={busy} placeholder={help} value={note} onChange={(e) => setNote(e.target.value)} />
+      </label>
       {noteRequired ? <p className="sub">{help}</p> : null}
     </ConfirmModal>
   );

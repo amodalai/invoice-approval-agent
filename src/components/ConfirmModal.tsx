@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useEffect, useId, useRef, type ReactNode } from "react";
 
 export function ConfirmModal({
   title,
@@ -19,12 +19,34 @@ export function ConfirmModal({
   onCancel: () => void;
   children: ReactNode;
 }) {
+  const ref = useRef<HTMLDialogElement>(null);
+  const titleId = useId();
+  useEffect(() => {
+    const dialog = ref.current!;
+    const opener = document.activeElement as HTMLElement | null;
+    dialog.showModal();
+    return () => {
+      dialog.close();
+      opener?.focus();
+    };
+  }, []);
+
   return (
-    <div className="modal-overlay" role="dialog" aria-modal="true" onClick={onCancel}>
+    <dialog
+      ref={ref}
+      className="modal-overlay"
+      aria-labelledby={titleId}
+      aria-busy={busy}
+      onCancel={(e) => {
+        e.preventDefault();
+        if (!busy) onCancel();
+      }}
+      onClick={busy ? undefined : onCancel}
+    >
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2 className="modal__title">{title}</h2>
+        <h2 id={titleId} className="modal__title">{title}</h2>
         {children}
-        {error ? <div className="banner error">{error}</div> : null}
+        {error ? <div className="banner error" role="alert">{error}</div> : null}
         <div className="modal__actions">
           <button className="btn btn--ghost" disabled={busy} onClick={onCancel}>
             Cancel
@@ -34,6 +56,6 @@ export function ConfirmModal({
           </button>
         </div>
       </div>
-    </div>
+    </dialog>
   );
 }
