@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useToolRun } from "@amodalai/react";
+import { Intake } from "../components/Intake.js";
 import { LineItemsEditor, emptyLine, lineAmount, type LineDraft } from "../components/LineItemsEditor.js";
 import { hashOf } from "../routes.js";
 import { REQUESTERS } from "../../amodal/_lib/examples.js";
@@ -9,8 +10,32 @@ import { remaining, usd, type Data, type InvoiceRow } from "../types.js";
 const isoDay = (d: Date) => d.toISOString().slice(0, 10);
 const plusDays = (days: number) => isoDay(new Date(Date.now() + days * 86_400_000));
 
-/** The invoice form. With `initial` it resubmits that returned invoice. */
+/** Paste the invoice, or fill in the fields. With `initial` it is the form, resubmitting that returned invoice. */
 export function Submit({ data, initial }: { data: Data; initial?: InvoiceRow }) {
+  const [typing, setTyping] = useState(!!initial);
+  if (!typing) {
+    return (
+      <>
+        <Intake
+          review
+          onDone={async (id) => {
+            await data.refetch();
+            location.hash = hashOf({ name: "invoice", id });
+          }}
+        />
+        <p className="sub switch">
+          No document to paste?{" "}
+          <button type="button" className="link" onClick={() => setTyping(true)}>
+            Fill in the fields instead
+          </button>
+        </p>
+      </>
+    );
+  }
+  return <InvoiceForm data={data} initial={initial} />;
+}
+
+function InvoiceForm({ data, initial }: { data: Data; initial?: InvoiceRow }) {
   const submit = useToolRun<Record<string, unknown>>("submit_invoice");
   const [vendor, setVendor] = useState(initial?.vendor_name ?? "");
   const [number, setNumber] = useState(initial?.invoice_number ?? "");

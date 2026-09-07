@@ -3,6 +3,7 @@ import { ReviewBody } from "./ReviewBody.js";
 
 export const KIND_LABEL: Record<EventRow["kind"], string> = {
   seeded: "Seeded",
+  received: "Received",
   submitted: "Submitted",
   resubmitted: "Resubmitted",
   reviewed: "Reviewed",

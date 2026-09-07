@@ -9,7 +9,7 @@ import { InvoiceDetail } from "./screens/InvoiceDetail.js";
 import { MyInvoices } from "./screens/MyInvoices.js";
 import { Policy } from "./screens/Policy.js";
 import { PurchaseOrders } from "./screens/PurchaseOrders.js";
-import { Queue } from "./screens/Queue.js";
+import { Inbox } from "./screens/Inbox.js";
 import { Submit } from "./screens/Submit.js";
 import { errorMessage, runTool } from "./tools.js";
 import { isDecided, type Data, type EventRow, type InvoiceRow, type PORow, type ReviewRow } from "./types.js";
@@ -44,7 +44,7 @@ function Screen({ route, data, persona }: { route: Route; data: Data; persona: P
     case "policy":
       return <Policy />;
     default:
-      return <Queue data={data} />;
+      return <Inbox data={data} />;
   }
 }
 
@@ -117,7 +117,7 @@ export default function App() {
   const counts =
     persona.role === "requester"
       ? { mine: data.invoices.filter((i) => i.status === "returned").length }
-      : { queue: data.invoices.filter((i) => !isDecided(i)).length };
+      : { inbox: data.invoices.filter((i) => !isDecided(i)).length };
 
   return (
     <div className="app">

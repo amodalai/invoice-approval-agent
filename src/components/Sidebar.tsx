@@ -3,7 +3,7 @@ import type { Persona } from "../persona.js";
 import { TABS, hashOf, type Route, type TabName } from "../routes.js";
 
 const ICONS: Record<TabName, ReactNode> = {
-  queue: (
+  inbox: (
     <>
       <path d="M3 13h5l2 3h4l2-3h5" />
       <path d="M5 5h14l2 8v6H3v-6z" />

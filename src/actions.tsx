@@ -6,7 +6,7 @@ import { errorMessage, runTool } from "./tools.js";
 import { latestReview, type Data, type Decision, type InvoiceRow } from "./types.js";
 
 /**
- * The approver's actions on an invoice, shared by the queue and the detail
+ * The approver's actions on an invoice, shared by the inbox and the detail
  * screen. Reviews queue up and run one at a time: the tool launcher is single
  * flight and aborts the run in flight when the next one starts.
  */

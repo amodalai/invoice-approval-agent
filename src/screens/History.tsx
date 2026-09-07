@@ -5,7 +5,7 @@ import { REC_LABEL, when, type Data, type EventRow } from "../types.js";
 
 const CHIPS: Array<{ label: string; kinds: Array<EventRow["kind"]> }> = [
   { label: "All", kinds: [] },
-  { label: "Submitted", kinds: ["submitted", "resubmitted"] },
+  { label: "Submitted", kinds: ["received", "submitted", "resubmitted"] },
   { label: "Reviewed", kinds: ["reviewed"] },
   { label: "Returned", kinds: ["returned"] },
   { label: "Approved", kinds: ["approved"] },

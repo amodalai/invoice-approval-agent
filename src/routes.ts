@@ -1,7 +1,7 @@
 export type Role = "approver" | "requester";
 
 export type Route =
-  | { name: "queue" | "purchase-orders" | "history" | "policy" | "submit" | "mine" }
+  | { name: "inbox" | "purchase-orders" | "history" | "policy" | "submit" | "mine" }
   | { name: "invoice"; id: string };
 
 export type TabName = Exclude<Route, { name: "invoice" }>["name"];
@@ -9,7 +9,7 @@ export type TabName = Exclude<Route, { name: "invoice" }>["name"];
 /** Each persona's tabs, first one is home. */
 export const TABS: Record<Role, Array<{ name: TabName; label: string }>> = {
   approver: [
-    { name: "queue", label: "Queue" },
+    { name: "inbox", label: "Inbox" },
     { name: "purchase-orders", label: "Purchase orders" },
     { name: "history", label: "History" },
     { name: "policy", label: "Policy" },

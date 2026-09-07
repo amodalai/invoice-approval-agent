@@ -42,6 +42,7 @@ export interface ReviewRow {
   invoice_id: string;
   revision: number;
   recommendation: Recommendation;
+  reason?: string | null;
   summary: string;
   checks?: Check[];
   issues: string[];
@@ -86,6 +87,19 @@ export const when = (iso: string) =>
 export const remaining = (po: PORow) => po.amount_usd - po.billed_to_date_usd;
 
 export const isDecided = (inv: InvoiceRow) => inv.status === "approved" || inv.status === "rejected";
+
+/** The decision a recommendation points at, so it can be the row's primary action. Hold and escalate both go back with a note. */
+export const PRIMARY_DECISION: Record<Recommendation, Decision> = {
+  approve: "approved",
+  hold: "returned",
+  escalate: "returned",
+  reject: "rejected",
+};
+
+export const DECISION_LABEL: Record<Decision, string> = { approved: "Approve", rejected: "Reject", returned: "Return" };
+
+/** The row's one sentence: the review's reason, else its summary. */
+export const reasonOf = (review: ReviewRow) => review.reason?.trim() || review.summary;
 
 /** The review the invoice names, else the newest one. */
 export const latestReview = (data: Data, inv: InvoiceRow) => {

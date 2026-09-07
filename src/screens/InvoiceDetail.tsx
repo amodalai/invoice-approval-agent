@@ -5,7 +5,7 @@ import { ReviewBody } from "../components/ReviewBody.js";
 import { StatusPill } from "../components/StatusPill.js";
 import { Timeline } from "../components/Timeline.js";
 import { hashOf } from "../routes.js";
-import { REC_LABEL, latestReview, remaining, usd, type Data, type InvoiceRow } from "../types.js";
+import { REC_LABEL, latestReview, reasonOf, remaining, usd, type Data, type InvoiceRow } from "../types.js";
 import { Submit } from "./Submit.js";
 
 /** Dates, purchase order, line items against the stated total, notes. */
@@ -118,7 +118,7 @@ export function InvoiceDetail({ id, data, requester }: { id: string; data: Data;
     return (
       <div className="empty">
         <p>No invoice {id}.</p>
-        <a href={hashOf({ name: requester ? "mine" : "queue" })}>Back</a>
+        <a href={hashOf({ name: requester ? "mine" : "inbox" })}>Back</a>
       </div>
     );
   }
@@ -151,6 +151,7 @@ export function InvoiceDetail({ id, data, requester }: { id: string; data: Data;
                   <span className={`pill rec-${review.recommendation}`}>{REC_LABEL[review.recommendation]}</span>{" "}
                   <span className="muted-text">revision {review.revision}</span>
                 </p>
+                <p className="reason reason--lead">{reasonOf(review)}</p>
                 <ReviewBody review={review} />
               </>
             ) : (
@@ -160,7 +161,7 @@ export function InvoiceDetail({ id, data, requester }: { id: string; data: Data;
           <section className="card">
             <h3>Actions</h3>
             <div className="actions">
-              <InvoiceActionButtons inv={inv} actions={actions} />
+              <InvoiceActionButtons inv={inv} actions={actions} detail />
             </div>
           </section>
           <section className="card">

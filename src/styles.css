@@ -741,20 +741,131 @@ a.btn {
   border-left: 1px solid var(--border);
 }
 
-.decide .btn:first-child {
-  color: var(--ok);
+/* The primary action is the decision the recommendation points at. */
+.btn--approved {
+  background: var(--ok);
+  border-color: var(--ok);
 }
 
-.decide .btn:first-child:hover:not(:disabled) {
+.btn--approved:hover:not(:disabled) {
+  background: #05603a;
+  border-color: #05603a;
+}
+
+.btn--rejected {
+  background: var(--danger);
+  border-color: var(--danger);
+}
+
+.btn--rejected:hover:not(:disabled) {
+  background: #912018;
+  border-color: #912018;
+}
+
+/* Fixed widths so the buttons line up down the inbox whichever decision leads. */
+.act-row > .btn {
+  min-width: 92px;
+}
+
+.decide .btn {
+  min-width: 80px;
+}
+
+.screen__actions {
+  display: flex;
+  gap: 10px;
+  flex: 0 0 auto;
+  margin-top: 4px;
+}
+
+/* The recommendation cell: the pill and its one sentence, or the review's steps while it runs. */
+.verdict {
+  min-width: 30ch;
+  max-width: 46ch;
+}
+
+.reason {
+  margin-top: 6px;
+  color: var(--ink-2);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.reason--lead {
+  margin: 0 0 12px;
+  font-size: 14px;
+  color: var(--ink);
+}
+
+.steps {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+
+.step {
+  position: relative;
+  padding-left: 18px;
+  line-height: 1.45;
+  animation: step-in 220ms ease-out;
+}
+
+.step + .step {
+  margin-top: 5px;
+}
+
+.step::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.4em;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  border: 2px solid var(--ok);
   background: var(--ok-soft);
 }
 
-.decide .btn:last-child {
-  color: var(--danger);
+.step--flag::before {
+  border-color: var(--warn);
+  background: var(--warn-soft);
 }
 
-.decide .btn:last-child:hover:not(:disabled) {
+.step--fail::before {
+  border-color: var(--danger);
   background: var(--danger-soft);
+}
+
+.step--pending {
+  color: var(--muted);
+}
+
+.step--pending::before {
+  border-color: var(--border);
+  border-top-color: var(--accent);
+  background: transparent;
+  animation: spin 800ms linear infinite;
+}
+
+@keyframes step-in {
+  from {
+    opacity: 0;
+    transform: translateY(3px);
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .step {
+    animation: none;
+  }
 }
 
 /* Modals. */
@@ -860,6 +971,95 @@ a.btn {
   justify-content: flex-end;
   gap: 10px;
   margin-top: 20px;
+}
+
+/* The intake panel: a document as the vendor sent it. */
+.intake {
+  margin: 0 0 20px;
+  max-width: 860px;
+}
+
+.intake .sub {
+  margin-bottom: 12px;
+}
+
+.intake .chips {
+  align-items: center;
+  margin-bottom: 10px;
+  font-size: 12.5px;
+}
+
+.intake__text {
+  width: 100%;
+  min-height: 200px;
+  padding: 12px 14px;
+  font-family: var(--mono);
+  font-size: 12.5px;
+  line-height: 1.5;
+  color: var(--ink);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  resize: vertical;
+  transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+
+.intake__text:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-ring);
+}
+
+.intake__foot {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.intake__foot .modal__actions {
+  margin-top: 0;
+}
+
+.intake__who {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-2);
+  min-width: 34ch;
+}
+
+.intake__who select {
+  font: inherit;
+  font-size: 13px;
+  font-weight: 400;
+  height: var(--control);
+  padding: 0 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.link {
+  font: inherit;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--accent);
+  font-weight: 500;
+  cursor: pointer;
+}
+
+.link:hover {
+  text-decoration: underline;
+}
+
+.switch {
+  margin-top: 12px;
 }
 
 .foot {

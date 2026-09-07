@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { remaining, usd, type PORow } from "../src/types.js";
+import { PRIMARY_DECISION, reasonOf, remaining, usd, type PORow, type ReviewRow } from "../src/types.js";
 
 const po = (amount_usd: number, billed_to_date_usd: number): PORow => ({
   po_number: "PO-1041",
@@ -24,4 +24,12 @@ test("remaining subtracts what the purchase order already billed, without clampi
   assert.equal(remaining(po(12_000, 4_000)), 8_000);
   assert.equal(remaining(po(12_000, 12_000)), 0);
   assert.equal(remaining(po(12_000, 13_500)), -1_500);
+});
+
+test("each recommendation names the decision that follows it, and a review without a reason shows its summary", () => {
+  assert.deepEqual(PRIMARY_DECISION, { approve: "approved", hold: "returned", escalate: "returned", reject: "rejected" });
+  const review = { review_id: "r", invoice_id: "i", revision: 1, recommendation: "hold", summary: "Long form.", issues: [], created_at: "" } as ReviewRow;
+  assert.equal(reasonOf(review), "Long form.");
+  assert.equal(reasonOf({ ...review, reason: " Short. " }), "Short.");
+  assert.equal(reasonOf({ ...review, reason: null }), "Long form.");
 });
