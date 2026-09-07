@@ -17,6 +17,15 @@ test("hashOf round-trips every route", () => {
   assert.deepEqual(parseHash(hashOf({ name: "invoice", id: "inv x" })), { name: "invoice", id: "inv x" });
 });
 
+test("malformed invoice escapes redirect home instead of crashing the app", () => {
+  for (const id of ["%", "%GG", "%C3%28", "%E0%A4%A"]) {
+    const hash = `#/invoice/${id}`;
+    assert.equal(parseHash(hash), undefined);
+    assert.deepEqual(resolveRoute("approver", hash), { route: { name: "inbox" }, redirect: "#/inbox" });
+    assert.deepEqual(resolveRoute("requester", hash), { route: { name: "submit" }, redirect: "#/submit" });
+  }
+});
+
 test("each persona owns its tabs and the invoice detail, and is redirected home otherwise", () => {
   assert.equal(ownsRoute("approver", { name: "inbox" }), true);
   assert.equal(ownsRoute("approver", { name: "submit" }), false);

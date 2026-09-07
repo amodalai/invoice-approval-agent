@@ -25,7 +25,13 @@ export const hashOf = (route: Route) => (route.name === "invoice" ? `#/invoice/$
 export function parseHash(hash: string): Route | undefined {
   const m = /^#\/([a-z-]+)(?:\/([^/]+))?$/.exec(hash);
   if (!m) return undefined;
-  if (m[1] === "invoice") return m[2] ? { name: "invoice", id: decodeURIComponent(m[2]) } : undefined;
+  if (m[1] === "invoice" && m[2]) {
+    try {
+      return { name: "invoice", id: decodeURIComponent(m[2]) };
+    } catch {
+      return undefined;
+    }
+  }
   const tab = [...TABS.approver, ...TABS.requester].find((t) => t.name === m[1]);
   return tab && !m[2] ? { name: tab.name } : undefined;
 }
