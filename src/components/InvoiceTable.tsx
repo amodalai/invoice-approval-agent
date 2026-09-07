@@ -34,8 +34,8 @@ function Row({ inv, data, actions }: { inv: InvoiceRow; data: Data; actions: Inv
           #{inv.invoice_number}
           {inv.revision > 1 ? ` · rev ${inv.revision}` : ""}
         </div>
+        <div className="note">{inv.requester}</div>
       </td>
-      <td>{inv.requester}</td>
       <td className="po">
         {po ? (
           <>
@@ -62,11 +62,11 @@ function Row({ inv, data, actions }: { inv: InvoiceRow; data: Data; actions: Inv
 
 export function InvoiceTable({ invoices, data, actions }: { invoices: InvoiceRow[]; data: Data; actions: InvoiceActions }) {
   return (
+    <div className="table-scroll" role="region" aria-label="Invoice queue" tabIndex={0}>
     <table className="grid">
       <thead>
         <tr>
           <th>Vendor</th>
-          <th>Requester</th>
           <th>Purchase order</th>
           <th className="num">Total</th>
           <th>Recommendation</th>
@@ -79,5 +79,6 @@ export function InvoiceTable({ invoices, data, actions }: { invoices: InvoiceRow
         ))}
       </tbody>
     </table>
+    </div>
   );
 }

@@ -37,7 +37,8 @@ export function InvoiceSection({ inv, data }: { inv: InvoiceRow; data: Data }) {
           )}
         </dd>
       </dl>
-      <table className="grid grid--compact">
+      <div className="table-scroll" role="region" aria-label="Invoice line items" tabIndex={0}>
+    <table className="grid grid--compact">
         <thead>
           <tr>
             <th>Line</th>
@@ -70,6 +71,7 @@ export function InvoiceSection({ inv, data }: { inv: InvoiceRow; data: Data }) {
           </tr>
         </tbody>
       </table>
+    </div>
       {inv.notes ? <p className="note">{inv.notes}</p> : null}
     </section>
   );
@@ -129,9 +131,9 @@ export function InvoiceDetail({ id, data, requester }: { id: string; data: Data;
     <section>
       <div className="screen__bar">
         <div>
-          <h2>
+          <h1>
             {inv.vendor_name} #{inv.invoice_number}
-          </h2>
+          </h1>
           <p className="sub">
             {usd(inv.total_usd)} · {inv.requester} · revision {inv.revision} · {inv.invoice_id}
           </p>

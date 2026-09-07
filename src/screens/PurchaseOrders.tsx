@@ -10,11 +10,12 @@ export function PurchaseOrders({ data }: { data: Data }) {
     <section>
       <div className="screen__bar">
         <div>
-          <h2>Purchase orders</h2>
+          <h1>Purchase orders</h1>
           <p className="sub">What the company agreed to buy, what has been billed against it, and the invoices behind each balance.</p>
         </div>
       </div>
-      <table className="grid">
+      <div className="table-scroll" role="region" aria-label="Purchase orders" tabIndex={0}>
+    <table className="grid">
         <thead>
           <tr>
             <th>PO</th>
@@ -58,6 +59,7 @@ export function PurchaseOrders({ data }: { data: Data }) {
           ))}
         </tbody>
       </table>
+    </div>
     </section>
   );
 }

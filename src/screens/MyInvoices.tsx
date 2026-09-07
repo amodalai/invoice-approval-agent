@@ -8,7 +8,7 @@ export function MyInvoices({ data }: { data: Data }) {
     <section>
       <div className="screen__bar">
         <div>
-          <h2>My invoices</h2>
+          <h1>My invoices</h1>
           <p className="sub">Everything submitted for review, newest first. A returned invoice can be edited and resubmitted.</p>
         </div>
       </div>
@@ -18,7 +18,8 @@ export function MyInvoices({ data }: { data: Data }) {
           <a href={hashOf({ name: "submit" })}>Submit an invoice</a>
         </div>
       ) : (
-        <table className="grid">
+        <div className="table-scroll" role="region" aria-label="Submitted invoices" tabIndex={0}>
+    <table className="grid">
           <thead>
             <tr>
               <th>Vendor</th>
@@ -59,6 +60,7 @@ export function MyInvoices({ data }: { data: Data }) {
             ))}
           </tbody>
         </table>
+    </div>
       )}
     </section>
   );

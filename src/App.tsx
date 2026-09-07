@@ -124,6 +124,7 @@ export default function App() {
 
   return (
     <div className="app">
+      <a className="skip-link" href="#content" onClick={(e) => { e.preventDefault(); document.getElementById("content")?.focus(); }}>Skip to content</a>
       <Sidebar
         persona={persona}
         route={route}
@@ -134,7 +135,7 @@ export default function App() {
           setConfirmReset(true);
         }}
       />
-      <main className="page">
+      <main id="content" className="page" tabIndex={-1}>
         {seedError ? (
           <div className="banner error" role="alert">
             {seedError}{" "}

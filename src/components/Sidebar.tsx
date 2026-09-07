@@ -67,7 +67,7 @@ export function Sidebar({
       </a>
       <nav className="nav" aria-label="Sections">
         {TABS[persona.role].map((t) => (
-          <a key={t.name} className={`nav__item${route.name === t.name ? " active" : ""}`} href={hashOf({ name: t.name })}>
+          <a key={t.name} className={`nav__item${route.name === t.name ? " active" : ""}`} aria-current={route.name === t.name ? "page" : undefined} href={hashOf({ name: t.name })}>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
               {ICONS[t.name]}
             </svg>
@@ -78,7 +78,7 @@ export function Sidebar({
       </nav>
       <div className="rail__foot">
         <label className="persona">
-          <span>Acting as</span>
+          <span>Demo role</span>
           <select value={persona.role} onChange={(e) => onSwitch(e.target.value)}>
             <option value="approver">Approver (accounts payable)</option>
             <option value="requester">Requester</option>

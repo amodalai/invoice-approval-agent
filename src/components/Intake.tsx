@@ -71,6 +71,8 @@ export function Intake({ review, onDone, onCancel }: { review: boolean; onDone: 
       </div>
       <textarea
         className="intake__text"
+        aria-label="Invoice email or PDF text"
+        required
         value={text}
         disabled={locked}
         onChange={(e) => setText(e.target.value)}
@@ -100,7 +102,7 @@ export function Intake({ review, onDone, onCancel }: { review: boolean; onDone: 
           </button>
         </div>
       </div>
-      {error ? <div className="banner error">{error}</div> : null}
+      {error ? <div className="banner error" role="alert">{error}</div> : null}
       {error && saved ? <p className="sub">The invoice is saved. Retry to finish processing it.</p> : null}
     </form>
   );

@@ -18,13 +18,12 @@ export function Inbox({ data }: { data: Data }) {
     <section>
       <div className="screen__bar">
         <div>
-          <h2>
-            Inbox
+          <h1>
+            Invoice approval
             {invoices.length ? <span className="screen__count">{invoices.length}</span> : null}
-          </h2>
+          </h1>
           <p className="sub">
-            Vendor invoices waiting for payment. The agent matches each one to its purchase order, checks the spend policy, and
-            recommends. You decide.
+            The agent checks the invoice and explains its recommendation. You approve, return, or reject it.
           </p>
         </div>
         <div className="screen__actions">
@@ -36,6 +35,11 @@ export function Inbox({ data }: { data: Data }) {
           </button>
         </div>
       </div>
+      <ol className="demo-flow" aria-label="Try the demo">
+        <li><strong>1. Review the examples</strong><p>Use Review all to compare a clean invoice, a duplicate, and a purchase-order mismatch.</p></li>
+        <li><strong>2. Read the reason</strong><p>Open a vendor to see the invoice, the policy checks, and the agent’s explanation.</p></li>
+        <li><strong>3. Make the decision</strong><p>Approve a match or return it with a note. Switch to Requester to correct it and resubmit.</p></li>
+      </ol>
       {pasting ? (
         <Intake
           review={false}

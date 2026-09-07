@@ -8,7 +8,7 @@ export function Policy() {
     <section>
       <div className="screen__bar">
         <div>
-          <h2>Policy</h2>
+          <h1>Policy</h1>
           <p className="sub">The thresholds the code enforces, then the policy text the reviewer subagent reads.</p>
         </div>
       </div>

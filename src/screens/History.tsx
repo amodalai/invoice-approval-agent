@@ -28,14 +28,14 @@ export function History({ data }: { data: Data }) {
     <section>
       <div className="screen__bar">
         <div>
-          <h2>History</h2>
-          <p className="sub">Every action on every invoice, newest first, from the events store.</p>
+          <h1>History</h1>
+          <p className="sub">Every review and decision, with who did it and when.</p>
         </div>
-        <input className="filter" placeholder="Vendor or invoice id" value={text} onChange={(e) => setText(e.target.value)} />
+        <input aria-label="Search invoice history" className="filter" placeholder="Vendor or invoice id" value={text} onChange={(e) => setText(e.target.value)} />
       </div>
       <div className="chips">
         {CHIPS.map((c, i) => (
-          <button key={c.label} className={`chip${chip === i ? " active" : ""}`} onClick={() => setChip(i)}>
+          <button key={c.label} className={`chip${chip === i ? " active" : ""}`} aria-pressed={chip === i} onClick={() => setChip(i)}>
             {c.label}
           </button>
         ))}
@@ -43,7 +43,8 @@ export function History({ data }: { data: Data }) {
       {events.length === 0 ? (
         <div className="empty">No events match.</div>
       ) : (
-        <table className="grid">
+        <div className="table-scroll" role="region" aria-label="Invoice history" tabIndex={0}>
+    <table className="grid">
           <thead>
             <tr>
               <th>When</th>
@@ -82,6 +83,7 @@ export function History({ data }: { data: Data }) {
             })}
           </tbody>
         </table>
+    </div>
       )}
     </section>
   );

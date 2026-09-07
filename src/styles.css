@@ -5,30 +5,30 @@
   --surface-3: #f1f4f8;
   --ink: #0f172a;
   --ink-2: #334155;
-  --muted: #64748b;
-  --faint: #94a3b8;
+  --muted: #435168;
+  --faint: #435168;
   --border: #e2e8f0;
   --border-soft: #edf1f5;
-  --accent: #2f56d9;
-  --accent-hover: #2646b6;
+  --accent: #2442b3;
+  --accent-hover: #1d3694;
   --accent-soft: #e9eefc;
   --accent-ring: rgba(47, 86, 217, 0.22);
   --accent-ink: #ffffff;
-  --danger: #b42318;
+  --danger: #8f1d14;
   --danger-soft: #fef0ee;
   --danger-line: #f6c9c3;
-  --ok: #067647;
+  --ok: #075a36;
   --ok-soft: #e3f7ec;
   --ok-line: #b7e6cb;
-  --warn: #9a5b00;
+  --warn: #754300;
   --warn-soft: #fdf3d8;
   --warn-line: #f2dca0;
-  --hot: #b4380d;
+  --hot: #87300a;
   --hot-soft: #feece2;
   --hot-line: #f9c7ad;
   --rail-bg: #0f172a;
   --rail-bg-2: #141e35;
-  --rail-ink: #93a0b8;
+  --rail-ink: #b8c3d6;
   --rail-ink-strong: #ffffff;
   --rail-line: rgba(255, 255, 255, 0.08);
   --rail-active: rgba(255, 255, 255, 0.09);
@@ -39,7 +39,7 @@
   --shadow-xs: 0 1px 2px rgba(15, 23, 42, 0.05);
   --shadow: 0 1px 2px rgba(15, 23, 42, 0.04), 0 2px 8px rgba(15, 23, 42, 0.05);
   --shadow-lg: 0 24px 64px rgba(15, 23, 42, 0.24), 0 4px 12px rgba(15, 23, 42, 0.1);
-  --control: 34px;
+  --control: 44px;
   --font: "IBM Plex Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
   --mono: "IBM Plex Mono", ui-monospace, "SF Mono", Menlo, monospace;
 }
@@ -318,6 +318,7 @@ body {
   margin-bottom: 22px;
 }
 
+.screen__bar h1,
 .screen__bar h2,
 section h2 {
   display: flex;
@@ -712,9 +713,10 @@ a.btn {
 /* The action cell: a fixed-width review slot, then the segmented decision group. */
 .act-row {
   display: inline-flex;
-  align-items: center;
+  flex-direction: column;
+  align-items: stretch;
   justify-content: flex-end;
-  gap: 10px;
+  gap: 6px;
 }
 
 .btn--review {
@@ -768,7 +770,7 @@ a.btn {
 }
 
 .decide .btn {
-  min-width: 80px;
+  min-width: 64px;
 }
 
 .screen__actions {
@@ -780,8 +782,8 @@ a.btn {
 
 /* The recommendation cell: the pill and its one sentence, or the review's steps while it runs. */
 .verdict {
-  min-width: 30ch;
-  max-width: 46ch;
+  min-width: 22ch;
+  max-width: 34ch;
 }
 
 .reason {
@@ -1314,7 +1316,7 @@ a.btn {
   font: inherit;
   font-size: 12.5px;
   font-weight: 500;
-  height: 28px;
+  min-height: 44px;
   padding: 0 12px;
   border-radius: 999px;
   border: 1px solid var(--border);
@@ -1429,7 +1431,7 @@ a.btn {
 }
 
 .lines input {
-  height: 30px;
+  height: var(--control);
   padding: 0 9px;
   box-shadow: none;
 }
@@ -1452,4 +1454,73 @@ a.btn {
 
 .form .sub {
   margin-bottom: 8px;
+}
+
+.skip-link {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  transform: translateY(-150%);
+  z-index: 2000;
+  background: var(--surface);
+  color: var(--accent);
+  padding: 12px 16px;
+}
+
+.skip-link:focus { transform: none; }
+
+.rail :focus-visible { outline-color: #b8c3d6; }
+
+.table-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+  border-radius: var(--radius);
+}
+
+.demo-flow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  list-style: none;
+  padding: 16px 20px;
+  margin: 0 0 20px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+
+.demo-flow strong { display: block; margin-bottom: 4px; }
+.demo-flow p { margin: 0; color: var(--muted); font-size: 13px; }
+
+.rail__reset, .nav__item { min-height: 44px; }
+
+input:not([type=checkbox]), select, textarea { border-color: #718096; }
+input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
+
+:where(a, button, input, select, textarea, summary):focus-visible {
+  outline: 3px solid var(--accent);
+  outline-offset: 3px;
+}
+
+@media (max-width: 1200px) {
+  .screen__bar { flex-wrap: wrap; }
+  .screen__actions { flex-wrap: wrap; }
+  .page { padding: 24px; }
+}
+
+@media (max-width: 600px) {
+  .page { padding: 20px 12px 48px; }
+  .demo-flow { grid-template-columns: 1fr; gap: 12px; }
+  .form__row, .intake__foot { flex-direction: column; align-items: stretch; }
+  .form__row--total label:last-child { flex-basis: auto; text-align: left; }
+  .card { padding: 16px; }
+  .modal-overlay[open] { padding: 12px; }
+  .modal { padding: 20px; }
+  .fields, .modal__fields { grid-template-columns: 1fr; gap: 4px; }
+  .fields dd, .modal__fields dd { margin-bottom: 8px; overflow-wrap: anywhere; }
+  .filter { min-width: 0; width: 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
 }

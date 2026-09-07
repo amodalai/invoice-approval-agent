@@ -13,6 +13,7 @@ export const lineAmount = (l: LineDraft) => (Number(l.quantity) || 0) * (Number(
 export function LineItemsEditor({ lines, onChange }: { lines: LineDraft[]; onChange: (lines: LineDraft[]) => void }) {
   const update = (i: number, patch: Partial<LineDraft>) => onChange(lines.map((l, j) => (j === i ? { ...l, ...patch } : l)));
   return (
+    <div className="table-scroll" role="region" aria-label="Edit line items" tabIndex={0}>
     <table className="grid grid--compact lines">
       <thead>
         <tr>
@@ -27,17 +28,17 @@ export function LineItemsEditor({ lines, onChange }: { lines: LineDraft[]; onCha
         {lines.map((l, i) => (
           <tr key={i}>
             <td>
-              <input value={l.description} onChange={(e) => update(i, { description: e.target.value })} placeholder="What was delivered" />
+              <input aria-label={`Line ${i + 1} description`} required value={l.description} onChange={(e) => update(i, { description: e.target.value })} placeholder="What was delivered" />
             </td>
             <td className="num">
-              <input type="number" min="0" step="any" value={l.quantity} onChange={(e) => update(i, { quantity: e.target.value })} />
+              <input aria-label={`Line ${i + 1} quantity`} required type="number" min="0.01" step="any" value={l.quantity} onChange={(e) => update(i, { quantity: e.target.value })} />
             </td>
             <td className="num">
-              <input type="number" min="0" step="0.01" value={l.unit_price_usd} onChange={(e) => update(i, { unit_price_usd: e.target.value })} />
+              <input aria-label={`Line ${i + 1} unit price in dollars`} required type="number" min="0" step="0.01" value={l.unit_price_usd} onChange={(e) => update(i, { unit_price_usd: e.target.value })} />
             </td>
             <td className="num">{usd(lineAmount(l))}</td>
             <td className="act">
-              <button type="button" className="btn btn--ghost" disabled={lines.length === 1} onClick={() => onChange(lines.filter((_, j) => j !== i))}>
+              <button type="button" aria-label={`Remove line ${i + 1}`} className="btn btn--ghost" disabled={lines.length === 1} onClick={() => onChange(lines.filter((_, j) => j !== i))}>
                 Remove
               </button>
             </td>
@@ -52,5 +53,6 @@ export function LineItemsEditor({ lines, onChange }: { lines: LineDraft[]; onCha
         </tr>
       </tbody>
     </table>
+    </div>
   );
 }
