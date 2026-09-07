@@ -315,6 +315,9 @@ export async function runInvoiceReview(
   const loaded = preloaded ?? (await loadOrSeedExample(invoice_id, deps));
   if (!loaded) return { found: false, invoice_id };
   const { invoice, po, others } = loaded;
+  if (invoice.status !== "new" && invoice.status !== "reviewed") {
+    throw new Error(`Invoice ${invoice_id} is ${invoice.status}; only a new or reviewed invoice can be reviewed.`);
+  }
 
   deps.trace?.(
     `Loaded ${invoice.vendor_name} #${invoice.invoice_number} for ${money(invoice.total_usd)}: ` +

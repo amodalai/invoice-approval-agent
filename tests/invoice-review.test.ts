@@ -160,6 +160,23 @@ test("every run keeps its own review row, the invoice names the latest, and a re
   );
 });
 
+test("reviewing a decided or returned invoice preserves the human decision without calling the reviewer", async () => {
+  for (const status of ["approved", "rejected", "returned"]) {
+    const { deps, store, calls } = fakeDeps(REPLY, NOW);
+    const id = "inv_brightline_0417";
+    const invoice = { ...store.get(`invoices:${id}`)!, status, decision_note: "Keep this decision." };
+    store.set(`invoices:${id}`, invoice);
+    let reviews = 0;
+    deps.callSubagent = async () => { reviews += 1; return REPLY; };
+
+    await assert.rejects(runInvoiceReview(id, deps), new RegExp(`is ${status}; only a new or reviewed invoice`));
+
+    assert.deepEqual(store.get(`invoices:${id}`), invoice);
+    assert.equal(reviews, 0);
+    assert.ok(!calls.some(([name]) => name.endsWith("__set")));
+  }
+});
+
 test("a preloaded invoice is reviewed without reading the stores", async () => {
   const { deps, store, calls } = fakeDeps(REPLY);
   const invoice = { ...inv("inv_pixelforge_77"), revision: 2 };
