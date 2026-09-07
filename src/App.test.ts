@@ -43,9 +43,15 @@ test("a background refresh keeps the active review screen mounted", () => {
   assert.ok(screen(render({ purchase_orders: { isLoading: true } })));
 });
 
+test("a failed background refresh preserves saved form state and shows retry", () => {
+  const elements = render({ invoices: { error: new Error("Connection lost") } });
+  assert.ok(screen(elements));
+  assert.ok(elements.some((el) => el.props.role === "alert"));
+});
+
 for (const store of ["invoices", "purchase_orders", "reviews", "events"]) {
   test(`a ${store} read failure is visible and cannot look like an empty demo`, () => {
-    const elements = render({ [store]: { error: new Error("Connection lost") } });
+    const elements = render({ [store]: { data: undefined, error: new Error("Connection lost") } });
     assert.equal(screen(elements), undefined);
     assert.ok(elements.some((el) => el.props.role === "alert"));
     assert.ok(elements.some((el) => el.type === "button" && el.props.children === "Retry"));

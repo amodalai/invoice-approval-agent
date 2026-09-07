@@ -66,6 +66,7 @@ export default function App() {
   const queries = [invoicesQ, posQ, reviewsQ, eventsQ];
   const loading = queries.some((q) => q.isLoading && !q.data);
   const loadError = queries.find((q) => q.error)?.error;
+  const unavailable = queries.some((q) => q.error && !q.data);
 
   const reviews = new Map<string, ReviewRow[]>();
   for (const { value } of reviewsQ.data ?? []) reviews.set(value.invoice_id, [...(reviews.get(value.invoice_id) ?? []), value]);
@@ -150,7 +151,8 @@ export default function App() {
             Could not load the invoices and their review data. Check your runtime connection, then retry.{" "}
             <button className="btn btn--ghost" onClick={() => void data.refetch()}>Retry</button>
           </div>
-        ) : loading ? (
+        ) : null}
+        {unavailable ? null : loading ? (
           <div className="empty" role="status">Loading invoices and review data…</div>
         ) : seed.status === "running" ? (
           <div className="empty" role="status">Loading the demo…</div>
