@@ -1,0 +1,341 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "Invoice Approval Demo API",
+    "version": "0.1.0",
+    "description": "Invoices and purchase orders from the fictional approval demo. These operations read saved records and never approve invoices or move money."
+  },
+  "servers": [
+    {"url": "/"}
+  ],
+  "security": [
+    {"runtimeBearer": []}
+  ],
+  "paths": {
+    "/api/stores/invoices": {
+      "get": {
+        "operationId": "list_invoices",
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "List invoices",
+        "description": "Read saved records in the demo's unscoped store. The record is in each document's payload. An empty page means there are no matching saved records; it does not seed the demo.",
+        "parameters": [
+          {"$ref": "#/components/parameters/Limit"},
+          {"$ref": "#/components/parameters/Offset"},
+          {"$ref": "#/components/parameters/Filter"},
+          {"$ref": "#/components/parameters/Sort"}
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of saved demo records.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/InvoicePage"}
+              }
+            }
+          },
+          "400": {"description": "The filter is not valid JSON."},
+          "401": {"description": "Missing or invalid runtime credentials."},
+          "403": {"description": "The credential does not permit access to this agent."},
+          "404": {"description": "The store or record does not exist."},
+          "500": {"description": "The runtime could not read the store."}
+        }
+      }
+    },
+    "/api/stores/invoices/{key}": {
+      "get": {
+        "operationId": "get_invoice",
+        "tags": [
+          "Invoices"
+        ],
+        "summary": "Get one invoice",
+        "description": "Read a saved record by its invoice_id. History is empty when the store has no version history configured.",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "description": "The record's invoice_id.",
+            "schema": {"type": "string", "minLength": 1}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The saved record and any retained versions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "document",
+                    "history"
+                  ],
+                  "properties": {
+                    "document": {"$ref": "#/components/schemas/InvoiceDocument"},
+                    "history": {
+                      "type": "array",
+                      "items": {"$ref": "#/components/schemas/InvoiceDocument"}
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {"description": "Missing or invalid runtime credentials."},
+          "403": {"description": "The credential does not permit access to this agent."},
+          "404": {"description": "The store or record does not exist."},
+          "500": {"description": "The runtime could not read the store."}
+        }
+      }
+    },
+    "/api/stores/purchase_orders": {
+      "get": {
+        "operationId": "list_purchase_orders",
+        "tags": [
+          "Purchase orders"
+        ],
+        "summary": "List purchase orders",
+        "description": "Read saved records in the demo's unscoped store. The record is in each document's payload. An empty page means there are no matching saved records; it does not seed the demo.",
+        "parameters": [
+          {"$ref": "#/components/parameters/Limit"},
+          {"$ref": "#/components/parameters/Offset"},
+          {"$ref": "#/components/parameters/Filter"},
+          {"$ref": "#/components/parameters/Sort"}
+        ],
+        "responses": {
+          "200": {
+            "description": "A page of saved demo records.",
+            "content": {
+              "application/json": {
+                "schema": {"$ref": "#/components/schemas/PurchaseOrderPage"}
+              }
+            }
+          },
+          "400": {"description": "The filter is not valid JSON."},
+          "401": {"description": "Missing or invalid runtime credentials."},
+          "403": {"description": "The credential does not permit access to this agent."},
+          "404": {"description": "The store or record does not exist."},
+          "500": {"description": "The runtime could not read the store."}
+        }
+      }
+    },
+    "/api/stores/purchase_orders/{key}": {
+      "get": {
+        "operationId": "get_purchase_order",
+        "tags": [
+          "Purchase orders"
+        ],
+        "summary": "Get one purchase order",
+        "description": "Read a saved record by its po_number. History is empty when the store has no version history configured.",
+        "parameters": [
+          {
+            "name": "key",
+            "in": "path",
+            "required": true,
+            "description": "The record's po_number.",
+            "schema": {"type": "string", "minLength": 1}
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The saved record and any retained versions.",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "required": [
+                    "document",
+                    "history"
+                  ],
+                  "properties": {
+                    "document": {"$ref": "#/components/schemas/PurchaseOrderDocument"},
+                    "history": {
+                      "type": "array",
+                      "items": {"$ref": "#/components/schemas/PurchaseOrderDocument"}
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {"description": "Missing or invalid runtime credentials."},
+          "403": {"description": "The credential does not permit access to this agent."},
+          "404": {"description": "The store or record does not exist."},
+          "500": {"description": "The runtime could not read the store."}
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "runtimeBearer": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "An ak_ API key for this deployed agent or a short-lived runtime token. Same-origin signed-in browsers use their session cookie."
+      }
+    },
+    "parameters": {
+      "Limit": {
+        "name": "limit",
+        "in": "query",
+        "description": "Maximum records to return. Zero returns only the count.",
+        "schema": {"type": "integer", "minimum": 0, "default": 20}
+      },
+      "Offset": {
+        "name": "offset",
+        "in": "query",
+        "description": "Records to skip. Increase by the page size while hasMore is true.",
+        "schema": {"type": "integer", "minimum": 0, "maximum": 10000, "default": 0}
+      },
+      "Filter": {
+        "name": "filter",
+        "in": "query",
+        "description": "JSON object of exact payload field matches, for example {\"status\":\"reviewed\"}. URL-encode the value.",
+        "schema": {"type": "string"}
+      },
+      "Sort": {
+        "name": "sort",
+        "in": "query",
+        "description": "Payload field to sort by; prefix with - for descending order. Defaults to most recently saved first. Values sort as text.",
+        "schema": {"type": "string"}
+      }
+    },
+    "schemas": {
+      "StoreDocument": {
+        "type": "object",
+        "required": [
+          "key",
+          "appId",
+          "store",
+          "version",
+          "payload",
+          "meta"
+        ],
+        "properties": {
+          "key": {"type": "string"},
+          "appId": {"type": "string"},
+          "store": {"type": "string"},
+          "version": {"type": "integer"},
+          "payload": {"type": "object", "description": "The saved demo record."},
+          "meta": {
+            "type": "object",
+            "properties": {
+              "computedAt": {"type": "string", "format": "date-time"},
+              "stale": {"type": "boolean"}
+            }
+          }
+        }
+      },
+      "Invoice": {
+        "type": "object",
+        "required": [
+          "invoice_id"
+        ],
+        "properties": {
+          "invoice_id": {"type": "string"},
+          "vendor_name": {"type": "string"},
+          "invoice_number": {"type": "string"},
+          "po_number": {"type": "string", "nullable": true},
+          "invoice_date": {"type": "string"},
+          "due_date": {"type": "string"},
+          "total_usd": {"type": "number"},
+          "line_items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "description": {"type": "string"},
+                "quantity": {"type": "number"},
+                "unit_price_usd": {"type": "number"}
+              }
+            }
+          },
+          "notes": {"type": "string", "nullable": true},
+          "requester": {"type": "string"},
+          "revision": {"type": "number"},
+          "status": {"type": "string", "enum": ["new", "reviewed", "approved", "rejected", "returned"]},
+          "recommendation": {"type": "string", "enum": ["approve", "hold", "escalate", "reject", null], "nullable": true},
+          "review_id": {"type": "string", "nullable": true},
+          "reviewed_at": {"type": "string", "format": "date-time", "nullable": true},
+          "decided_at": {"type": "string", "format": "date-time", "nullable": true},
+          "decision_note": {"type": "string", "nullable": true},
+          "returned_note": {"type": "string", "nullable": true},
+          "received_at": {"type": "string", "format": "date-time"},
+          "submitted_at": {"type": "string", "format": "date-time"},
+          "created_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "InvoiceDocument": {
+        "allOf": [
+          {"$ref": "#/components/schemas/StoreDocument"},
+          {
+            "type": "object",
+            "properties": {
+              "payload": {"$ref": "#/components/schemas/Invoice"}
+            }
+          }
+        ]
+      },
+      "InvoicePage": {
+        "type": "object",
+        "required": [
+          "documents",
+          "total",
+          "hasMore"
+        ],
+        "properties": {
+          "documents": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/InvoiceDocument"}
+          },
+          "total": {"type": "integer", "minimum": 0},
+          "hasMore": {"type": "boolean"}
+        }
+      },
+      "PurchaseOrder": {
+        "type": "object",
+        "required": [
+          "po_number"
+        ],
+        "properties": {
+          "po_number": {"type": "string"},
+          "vendor_name": {"type": "string"},
+          "description": {"type": "string"},
+          "amount_usd": {"type": "number"},
+          "billed_to_date_usd": {"type": "number"},
+          "requester": {"type": "string"},
+          "status": {"type": "string", "enum": ["open", "closed"]},
+          "created_at": {"type": "string", "format": "date-time"}
+        }
+      },
+      "PurchaseOrderDocument": {
+        "allOf": [
+          {"$ref": "#/components/schemas/StoreDocument"},
+          {
+            "type": "object",
+            "properties": {
+              "payload": {"$ref": "#/components/schemas/PurchaseOrder"}
+            }
+          }
+        ]
+      },
+      "PurchaseOrderPage": {
+        "type": "object",
+        "required": [
+          "documents",
+          "total",
+          "hasMore"
+        ],
+        "properties": {
+          "documents": {
+            "type": "array",
+            "items": {"$ref": "#/components/schemas/PurchaseOrderDocument"}
+          },
+          "total": {"type": "integer", "minimum": 0},
+          "hasMore": {"type": "boolean"}
+        }
+      }
+    }
+  }
+}
