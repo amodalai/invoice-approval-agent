@@ -1,337 +1,113 @@
 # Invoice Approval Example
 
-![The approver's inbox: six invoices, with two recommendations, one review in progress, and three awaiting review](docs/screenshot.png)
+An Amodal demo that reads vendor invoices, checks purchase orders and a
+spend policy, and explains what needs attention. A person makes the decision.
 
-An Amodal agent that reviews vendor invoices before payment, in a two-persona
-accounts-payable demo for a fictional company, Larkspur Co. An invoice
-arrives as the vendor sent it (an email, the text of a PDF) and an extractor
-subagent reads it; code matches the purchase order and checks for
-duplicates; a reviewer subagent applies the spend policy and recommends one
-of `approve`, `hold`, `escalate`, or `reject` with a one-sentence reason; an
-approver watches the review happen in the inbox and decides, or returns the
-invoice for a fix. Every action leaves an event, and a guard hook makes the
-policy's hard rules hold for every writer.
+![Invoice approval demo with a guided inbox and seeded examples](docs/screenshot.png)
 
-The agent logic runs on the Amodal runtime, and the UI is a small React app
-the runtime serves for you. This repo is a finished, deliberately small app
-meant to be copied and changed. For the same building blocks introduced one
-at a time, see [amodal-demo](https://github.com/amodalai/amodal-demo).
+Paste a vendor email or PDF text, or use the five examples. The demo shows
+extraction, agent judgment, deterministic policy checks, saved records, and
+human approval in one workflow. Vendors, people, invoices, and policy are
+fictional. Approving an invoice records a decision; it does not send payment.
 
-> Fictional demo. The agent recommends a decision only. It never pays an
-> invoice, moves money, or gives accounting, tax, or legal advice.
+## Try it in three minutes
 
-## The use case
+Deploy this repository to Amodal and open the app. It loads the examples
+automatically. No external integration is needed.
 
-Accounts payable receives an invoice from a vendor. Before anyone pays it,
-someone has to answer: is there a purchase order for this, does the amount
-fit, is the vendor billing for what was ordered, and have we seen this invoice
-before? The first and last questions are lookups. The amount question is
-arithmetic. The scope question is judgment. This app splits the work the
-same way:
+1. Click **Review all 5**. Each invoice gets a recommendation and a short
+   reason. Brightline matches its order; Atlas includes work outside its
+   order; the second Brightline invoice is a duplicate.
+2. Open **Atlas Consulting Group**. Compare its line items with the purchase
+   order and read the review. The amounts fit, but the marketing workshop
+   is outside the data-migration work that was ordered.
+3. Approve the original Brightline invoice and confirm. Its purchase-order
+   balance changes, and **History** records your decision.
+4. Return Norwood with a note to remove the rush fee and reduce the invoice
+   to the order balance. Switch **Demo role** to **Requester**, open
+   **My invoices**, and edit the returned invoice. Remove the rush fee and
+   reduce the goods to $2,500 or less, then resubmit. Switch back to approve
+   the corrected revision.
+5. Click **Paste an invoice** and choose a sample email. The extractor reads
+   it, and the reviewer checks it. Ask chat “what happened to Atlas's
+   invoice?” to see an answer grounded in the saved history.
 
-| Question                                       | Who answers                | Where                                    |
-| ---------------------------------------------- | -------------------------- | ---------------------------------------- |
-| What does this email or PDF say?               | The extractor subagent     | `agents/invoice-extractor/AGENT.md`      |
-| Submit an invoice by hand                      | A requester, from the UI   | `amodal/tools/submit_invoice/handler.ts` |
-| Is there an open PO from this vendor?          | Code                       | `amodal/_lib/invoice-review.ts`          |
-| Is this a duplicate of an earlier invoice?     | Code                       | `amodal/_lib/invoice-review.ts`          |
-| Does the amount fit the PO, within tolerance?  | Code (`invoice_math`)      | `amodal/_lib/policy.ts`                  |
-| Do the line items match what the PO describes? | The reviewer subagent      | `agents/invoice-reviewer/AGENT.md`       |
-| Is a fee allowed? What does the memo mean?     | The reviewer subagent      | `amodal/knowledge/spend-policy.md`       |
-| Approve, return, or reject?                    | A human, from the UI       | `amodal/tools/decide_invoice/handler.ts` |
+**Reset demo data** restores the examples after confirmation.
+
+| Example | What it demonstrates | Expected recommendation |
+| --- | --- | --- |
+| Brightline #0417 | Exact purchase-order match | Approve |
+| Norwood #2288 | Amount exceeds the remaining balance and tolerance | Escalate |
+| Atlas #9911 | In-scope amounts, out-of-scope work | Hold |
+| PixelForge #77 | Small invoice with a named requester and no order | Approve |
+| Brightline #0417 resend | Duplicate invoice | Reject |
 
 ## How it works
 
-Two personas share one screen, switched in the left rail with no login: the
-**approver** and the **requester**. The choice is kept in `localStorage`. The
-person who asked for the work (one of the three seeded people: Omar Haddad,
-Lena Fischer, Maya Chen) is a field on the Submit form, prefilled from the
-purchase order, and stamped on the invoice as `requester`.
+| Responsibility | Implementation |
+| --- | --- |
+| Read invoice text | `agents/invoice-extractor/` |
+| Match vendor and order, detect duplicates, calculate amounts | `amodal/_lib/invoice-review.ts`, `policy.ts` |
+| Interpret scope and fees against the policy | `agents/invoice-reviewer/` |
+| Save submissions, reviews, decisions, and history | `amodal/tools/`, four `amodal/stores/` schemas |
+| Confirm a human decision and recheck the hard rules | `amodal/tools/decide_invoice/` |
+| Check approval writes against policy | `hooks/approval-guard/` |
+| Present the inbox, requester form, and history | `src/` |
 
-The UI calls its tools through the direct-invoke lane (`useToolRun` posts to
-`/api/tools/<name>/run`). A tool on that lane declares `execution: "durable"`
-and an `{ "kind": "invoke" }` trigger in its `tool.json`:
+The reviewer recommends; the decision handler validates and records the
+human action. Reviews cannot reopen approved or rejected invoices. A returned
+invoice must be edited and resubmitted. If review fails after a submission
+was saved, the UI keeps its record and offers a review retry through the inbox.
 
-- [`seed_examples`](amodal/tools/seed_examples/tool.json) loads the demo
-  dataset. The app runs it the first time it opens on empty stores; the
-  `seed` chat command runs the same tool, idempotent per row.
-- [`intake_invoice`](amodal/tools/intake_invoice/tool.json) takes a document
-  from chat or the paste panel, has the
-  [`invoice-extractor`](agents/invoice-extractor/AGENT.md) subagent read it against the open purchase orders, validates the fields,
-  resolves the requester (the document, else the purchase order, else the
-  caller's pick), writes the invoice as `new`, and appends a `received`
-  event. It does not review: the inbox runs `review_invoice` next, so the
-  review's steps are watched, not reported. Chat confirms the saved id and
-  runs `review_invoice` if the user also requests review.
-- [`submit_invoice`](amodal/tools/submit_invoice/tool.json) validates the
-  requester's form, writes the invoice, appends a `submitted` event, and
-  reviews the row it holds in memory, all in one run.
-- [`review_invoice`](amodal/tools/review_invoice/tool.json) runs the review
-  from the inbox's Review button, and from the `review <id>` chat command
-  (a regex trigger fires it from the request path before the LLM, which then
-  reports the result). As it works it narrates each step into the chat's
-  reasoning block (`ctx.emitReasoning`).
-- [`decide_invoice`](amodal/tools/decide_invoice/tool.json) records the
-  approver's decision: `approved`, `rejected`, or `returned` with a note.
-- [`reset_demo`](amodal/tools/reset_demo/tool.json) empties the four stores
-  and seeds them again, from the header's overflow menu.
+The role switch demonstrates two views of shared data. It is not user
+authentication or per-requester access control. See [SPEC.md](SPEC.md) for
+lifecycle, runtime constraints, and the guard's limits.
 
-`review_invoice` runs the four-stage flow in
-[`runInvoiceReview`](amodal/_lib/invoice-review.ts). The tool declares
-everything it composes in `uses` (the store tools and the reviewer subagent);
-undeclared calls fail closed:
+## Read-only API and OpenAPI discovery
 
-1. **load**: reads the invoice, its purchase order, and the vendor's other
-   invoices from the stores via the auto-generated `store__*__get` /
-   `store__*__query` tools, or takes the rows the caller already holds
-   (`submit_invoice` cannot read back the row it just wrote).
-2. **check (in code)**: the PO match, the vendor match, the duplicate lookup
-   (same vendor and invoice number, received earlier), and whether the
-   invoice needs a PO it doesn't have. Rules, not judgments, so code decides
-   them and hands the reviewer the result as fact.
-3. **review (in the subagent)**: `ctx.callSubagent` runs the
-   [`invoice-reviewer`](agents/invoice-reviewer/AGENT.md), which applies the
-   [spend policy](amodal/knowledge/spend-policy.md) (passed in as input) and
-   makes the judgment a formula can't: are the line items within the PO's
-   scope, is a fee one the policy excludes, what does the vendor's memo mean.
-   Mid-review it calls the [`invoice_math`](amodal/tools/invoice-math/tool.ts)
-   custom tool for the arithmetic (line sum, remaining PO balance, variance,
-   tolerance) and must cite those numbers in its `amount` check. Its reply is
-   a single JSON object the flow parses: the recommendation, a one-sentence
-   `reason` for the inbox row, a summary, the four checks, and the issues.
-4. **record**: code holds the floor on the way out. It computes the least
-   conservative recommendation the facts allow (a duplicate is never better
-   than `reject`, an over-tolerance invoice never better than `escalate`, a
-   missing PO over the limit never better than `hold`) and clamps the
-   reviewer's call to it. A clamp also replaces the reviewer's `reason` with
-   the rule that won. Then it writes a `reviews` row for this run (keyed
-   `rev_{invoice_id}_{revision}_{ms}`, so a re-review keeps the earlier
-   one), stamps the invoice `reviewed` with the review's id, and appends a
-   `reviewed` event.
+The deployed app serves `/openapi.json`. It describes the runtime's existing
+GET endpoints for listing invoices and purchase orders and reading one record.
+Another Amodal agent can discover these operations from the document URL.
 
-The invoke lane returns only the run's result. Queued invoices show
-"Queued for review" until their run starts. During the active run,
-`src/steps.ts` runs `checkInvoice` on the browser's loaded data and reveals
-its findings one at a time (purchase order, duplicate, arithmetic), with
-the reviewer's judgment pending until the result arrives. These are
-client-side checks while waiting for the review result, not streamed
-execution events. The tool reads the stores separately, so its result can
-reflect data changes the browser has not fetched.
+[API setup and examples](docs/api.md) covers runtime credentials, `curl`,
+pagination, and the consuming agent's OpenAPI connection. The API exposes
+saved demo records. It does not expose an approval operation in the contract.
 
-The invoice's `status` is the human-owned lane:
-
-```
-new -> reviewed -> approved | rejected
-              \-> returned -> new (resubmitted, revision + 1) -> reviewed -> ...
-```
-
-On a reviewed row the decision the recommendation points at is the primary
-button (Approve for `approve`, Return for `hold` and `escalate`, Reject for
-`reject`) and the other two sit beside it. Each opens a confirm modal, then
-calls `decide_invoice`. It requires a reviewed invoice and its review, re-runs the
-hard rules before an approval and refuses when one fails, requires a note to
-return an invoice or to approve one the review escalated, adds an approved
-total to the PO's billed-to-date, and appends the event. A returned invoice
-goes back to its requester, who edits and resubmits it at the next revision.
-`decide_invoice`, `submit_invoice`, and `reset_demo` are in
-no agent's `tools` list, so the model cannot call them.
-
-The `events` store holds one row per action (`seeded`, `received`,
-`submitted`, `resubmitted`, `reviewed`, `returned`, `approved`, `rejected`,
-`reset`) with
-its actor. The History tab and each invoice's timeline render it, and the
-chat agent answers "what happened to Atlas's invoice?" from it.
-
-The [`approval-guard`](hooks/approval-guard/index.mjs) hook backstops the
-hard rules at the platform layer: any write of `status: approved` or
-`recommendation: approve` on an invoice, or `recommendation: approve` on a
-review, is blocked when the invoice duplicates an earlier one, is over the
-no-PO limit with no PO, or exceeds its PO's remaining balance by more than
-the tolerance. The handlers already enforce this in code; the hook makes it
-true for every writer, including the chat agent's store tools.
-
-## What's in here
-
-| Path                                        | What it is                                                                                              |
-| ------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| `amodal.json`                               | Manifest: `runtimeApp: { custom: true }`, memory off.                                                   |
-| `agents/default/`                           | The chat agent: `AGENT.md` (prompt) and `agent.json` (tools, stores).                                   |
-| `agents/invoice-reviewer/`                  | The reviewer subagent that applies the spend policy. Its `agent.json` grants `invoice_math` + `load_knowledge`. |
-| `agents/invoice-extractor/`                 | The extractor subagent that turns a pasted email or PDF text into the invoice's fields. No tools.               |
-| `amodal/knowledge/spend-policy.md`          | The fictional spend policy the reviewer reasons over (passed to it as input).                          |
-| `amodal/stores/`                            | 4 store schemas: `invoices` (with inline `line_items`), `purchase_orders`, `reviews`, `events`.         |
-| `amodal/_lib/policy.ts`                     | The policy thresholds and the invoice arithmetic, one implementation for the tool, the flow, and the tests. |
-| `amodal/_lib/invoice-review.ts`             | The shared review flow: load, check, delegate, clamp, record.                                          |
-| `amodal/_lib/submit.ts`                     | The submission: validation, id generation, the resubmit rules, the write, then (for the form) the review. |
-| `amodal/_lib/intake.ts`                     | The intake: the extractor call, the purchase-order and requester resolution, the write as `new`.        |
-| `amodal/_lib/events.ts`                     | The `appendEvent` helper and the event kinds.                                                          |
-| `amodal/_lib/reset.ts`                      | Empty the four stores, seed them again, record the reset.                                              |
-| `amodal/_lib/examples.ts` / `demo-data.ts`  | The demo dataset (five live invoices plus a decided backlog with its reviews and events) and the code that hydrates it into the four stores. |
-| `amodal/tools/review_invoice/`              | The durable review tool (`tool.json` + `handler.ts`): declares its `uses`, the `review` regex trigger, and the `invoke` trigger. |
-| `amodal/tools/seed_examples/`               | The seeding tool behind the `seed` trigger and the app's first open.                                   |
-| `amodal/tools/intake_invoice/`              | Tool for chat and the paste panel: a document in, an unreviewed invoice out.                       |
-| `amodal/tools/submit_invoice/`              | Invoke-lane tool behind the requester's form.                                                          |
-| `amodal/tools/decide_invoice/`              | Invoke-lane tool behind Approve / Return / Reject: the approver's decision, recorded.                   |
-| `amodal/tools/reset_demo/`                  | Invoke-lane tool behind Reset demo data.                                                               |
-| `amodal/tools/invoice-math/`                | The custom tool the reviewer calls: deterministic arithmetic, numbers never verdicts.                   |
-| `amodal/_types/tool-context.ts`             | Vendored runtime types (`CustomToolContext`, `ToolDefinition`), kept local so the example typechecks offline. |
-| `hooks/approval-guard/`                     | `preToolUse` guard enforcing the hard rules for every writer.                                           |
-| `evals/`                                    | The eval suite: one per live invoice, a seed smoke test, a history question, and two safety evals. Re-run it before promoting. |
-| `src/`                                      | The custom React UI (Vite): `App.tsx` (rail, persona, hash routes, auto-seed), `routes.ts`, `persona.ts`, `types.ts`, `steps.ts` (the review's steps, from the code checks), `samples.ts` (documents to paste), `screens/` (Inbox, InvoiceDetail, PurchaseOrders, History, Policy, Submit, MyInvoices), and `components/`. |
-| `tests/`                                    | Unit tests for the code paths (`npm test`). Kept out of `amodal/` and `hooks/` so the runtime's loaders never see them. |
-| `docs/screenshot.png`                       | The screenshot at the top of this README, and the source for the marketplace card image. |
-
-## Example cases
-
-The five live invoices in `examples.ts`, each pinned by an eval:
-
-| Invoice                       | Vendor                    | Why                                                              | Expected   | Eval                        |
-| ----------------------------- | ------------------------- | ---------------------------------------------------------------- | ---------- | --------------------------- |
-| `inv_brightline_0417`         | Brightline Cloud Services | Open PO, exact amount, one in-scope line                         | `approve`  | `review-clean-approve.md`   |
-| `inv_norwood_2288`            | Norwood Office Supply     | $2,890 against $2,500 remaining (tolerance $50), plus a rush fee | `escalate` | `review-over-tolerance.md`  |
-| `inv_atlas_9911`              | Atlas Consulting Group    | Within the PO, but one line (a marketing workshop) is out of scope | `hold`   | `review-scope-mismatch.md`  |
-| `inv_pixelforge_77`           | PixelForge Design         | $650, no PO, requester named: allowed under the $1,000 limit     | `approve`  | `review-no-po-small.md`     |
-| `inv_brightline_0417_resend`  | Brightline Cloud Services | Same invoice number as 0417, received later                      | `reject`   | `review-duplicate.md`       |
-
-Norwood and Atlas show the split. Norwood is arithmetic: the tool says over
-by $390 and code would clamp any softer call. Atlas is judgment: every number
-is fine, and only a reader of the PO's description can see that a marketing
-workshop is not data migration consulting.
-
-Three documents sit behind the **Try one** chips of the paste panel, in
-`src/samples.ts`, each written the way a vendor would send it:
-
-| Document                        | What the extractor finds                                    | Expected  |
-| ------------------------------- | ----------------------------------------------------------- | --------- |
-| Atlas email, phase 2            | Invoice 9920 against PO-1063: 30 hours, plus two travel trips | `hold`: travel is not consulting hours |
-| PixelForge PDF, business cards  | Invoice 78, no PO, $240, a 48h rush line, ordered by Maya Chen | `hold`: the rush fee |
-| Norwood email, two chairs       | Invoice 2301 against PO-1052: two more N4 chairs, $790         | `approve` |
-
-Behind them sits a backlog of ten decided invoices from the six weeks before,
-with two more purchase orders, canned reviews, and events: routine approvals
-across the three requesters, a rejected duplicate (Kestrel Courier's 4410
-sent twice), one returned for a line-sum error and approved on its second
-revision (Sable Hardware's 3305), and one escalated and rejected with a note
-(Cedarline's compressor replacement, over its maintenance order). They fill
-the History tab, the purchase-order balances, and the requester's list at
-first open.
-
-## Running it
-
-Deploy the app to Amodal. The runtime serves the custom UI on the agent's
-domain and the agent chat alongside it. No credentials or environment
-variables are needed.
-
-1. Open the app. It loads the demo dataset on its own the first time
-   ("Loading the demo…"), then shows the approver's **Inbox** with the five
-   live invoices, none reviewed yet.
-2. Click **Review** on Atlas's 9911. The row shows client-side checks while
-   waiting for the review result: the purchase order found, no duplicate,
-   the amount within the balance, then the reviewer judgment pending. It
-   lands on **Hold**
-   with one sentence: the marketing workshop is not what PO-1063 covers.
-   **Review all** queues the rest and reviews them one at a time. Waiting
-   rows show "Queued for review"; the header counts active and queued runs.
-3. Click **Paste an invoice**, pick **Atlas email, phase 2**, and click
-   **Read and review**. The agent reads the email, the row appears, and its
-   review runs in front of you: hold, because travel is not consulting
-   hours. Paste anything else in the same shape and it works the same way.
-4. Each reviewed row leads with the decision the agent recommends.
-   **Approve** Brightline's 0417 and confirm. The PO's remaining balance
-   drops to $0 on the **Purchase orders** tab, and the resend of 0417 is
-   already marked a duplicate.
-5. On Norwood's 2288 the primary action is **Return**. Try **Approve**
-   instead: the decision is refused, because the invoice exceeds the PO by
-   more than the tolerance. That is the hard rule in `decide_invoice`; the
-   `approval-guard` hook enforces the same rule for any other writer.
-   **Return** it with a note.
-6. Switch the persona to **Requester**. **My invoices** shows the returned
-   2288 with your note; **Edit and resubmit** opens the form prefilled. Drop
-   the rush fee, resubmit, and switch back: the inbox shows revision 2,
-   ready to approve.
-7. Click a vendor to open the invoice: the line items against the stated
-   total, the review's checks and issues, and the timeline.
-8. Ask the chat: `what happened to Atlas's invoice?`, `how much is left on
-   PO-1063?`, or `would $2,600 be within tolerance on PO-1052?`. It answers
-   from the events store, the other stores, and `invoice_math`, never from
-   arithmetic in its head. Ask it to approve or return something and it
-   points you at the inbox. To add an invoice, paste its text or give its
-   details in chat and ask to add it. Chat saves it and returns the invoice
-   id; ask to review it too to get a recommendation.
-9. **Reset demo data** at the bottom of the rail puts everything back.
-10. Open the agent's **Evals** page and run the suite.
-    Then edit `spend-policy.md`, raise the no-PO limit to $500, redeploy, and
-    re-run: `review-no-po-small` fails while the rest stay green.
-
-### Developing locally
+## Develop and verify
 
 ```sh
 npm install
-npm run dev        # Vite dev server; talks to a runtime at VITE_RUNTIME_URL (default http://localhost:3001)
-npm run build      # production build → dist/ (what the cloud build uploads)
-npm run typecheck  # typechecks the runtime code (amodal/, tests/) and the SPA (src/)
-npm test           # unit tests for the policy math, the review flow, submit, decide, reset, the seed, the routes, and the hook
-amodal eval        # the eval suite against a local runtime
+npm run dev
+npm test
+npm run typecheck
+npm run build
+amodal eval
 ```
 
-## Making it yours
+The Vite development server needs an Amodal runtime at
+`VITE_RUNTIME_URL` (default `http://localhost:3001`). Cloud supplies a
+same-origin runtime URL when building the app. Vite alone serves the UI;
+it does not run the agents or stores.
 
-The pieces, in the order most people change them:
+`npm test` covers arithmetic, workflow transitions, hooks, UI recovery,
+contrast, and the OpenAPI contract. There is no separate lint command.
+The `evals/` suite checks model behavior against a runtime; local unit tests
+use simulated model replies. Use an Amodal CLI compatible with the manifest.
 
-- **The policy**: `amodal/knowledge/spend-policy.md` is the text the reviewer
-  reasons over. Its numbers are duplicated in `amodal/_lib/policy.ts`
-  (`POLICY`, used by the tool, the clamp, and the Policy tab) and in
-  `hooks/approval-guard/hook.json` (`config`, used by the guard). Change one,
-  change all three; `npm test` pins the code copies.
-- **The dataset**: `amodal/_lib/examples.ts`. Each invoice is one
-  self-contained entry with inline `line_items` and a `requester`; purchase
-  orders are keyed by `po_number`; backlog invoices carry their canned
-  reviews and final decision. `tests/demo-data.test.ts` pins the invariants
-  (balances add up, no live PO touched, every seeded approval passes the
-  guard). Edit it, redeploy, and update the evals that pin the expected
-  recommendations.
-- **The judgment**: `agents/invoice-reviewer/AGENT.md` holds the check
-  categories, the recommendation rules, and the JSON shape (including the
-  one-sentence `reason`). Add a check by adding it there and in the
-  `reviews` store's `_comment_purpose`.
-- **The intake**: `agents/invoice-extractor/AGENT.md` says how a document
-  becomes fields, and `intakeInvoice` in `amodal/_lib/intake.ts` decides
-  the purchase order and the requester from what comes back. To take a PDF
-  upload instead of pasted text, extract the text in the handler and pass
-  it as `document`. The sample documents are in `src/samples.ts`.
-- **The hard rules**: `approvalBlockers` and `floorRecommendation` in
-  `amodal/_lib/invoice-review.ts` are the rules code enforces regardless of
-  what the model says. `decide_invoice` and the review flow both call them.
-  Mirror a new rule in `hooks/approval-guard/index.mjs` if it should hold for
-  every writer.
-- **The arithmetic**: `invoiceMath` in `amodal/_lib/policy.ts`. The tool in
-  `amodal/tools/invoice-math/tool.ts` exposes it to the reviewer; its
-  `description` and `parametersJsonSchema` are what the LLM sees.
-- **The stores**: `amodal/stores/*.json`. The runtime validates every write
-  against the schema, so a new field goes there first, then through
-  `examples.ts`, `demo-data.ts`, the row types in `invoice-review.ts`, and
-  `src/types.ts`. A store needs `"deletable": true` for `store__*__remove`.
-- **The UI**: `src/App.tsx` is the shell (rail, persona switch, hash
-  routes from `routes.ts`, the self-seed on first open, the reset modal);
-  each tab is a file under `src/screens/`. The inbox's client-side checks
-  come from `src/steps.ts`, which runs the same `checkInvoice` as the tool; keep the
-  two in step when a hard rule changes. `PRIMARY_DECISION` in `src/types.ts`
-  maps a recommendation to the row's leading button. Reads go through `useStoreQuery`;
-  every write goes through `useToolRun` and `runTool` in `src/tools.ts`,
-  which turns a failed run outcome into an error the screen shows. The
-  Policy tab imports `spend-policy.md` with Vite's `?raw`, so it can never
-  drift from what the reviewer reads.
-- **The chat agent**: `agents/default/AGENT.md` and `agent.json`. The prompt
-  lists the demo ids, the requesters, and the rules about what chat may
-  never do. Store grants are per agent: `rw` registers the store's `set`
-  and `remove` tools for the session, and a composite tool the agent runs
-  can only call what is registered.
-- **Evals**: `evals/*.md`. Deterministic lines (`contains:`) for the
-  recommendation string, `Should …` lines for the reasoning.
+## Adapt the template
 
-Not in this template, by choice: payment or any money movement, real
-authentication, editing the policy at runtime, creating purchase orders from
-the UI, vendor notification, file upload (intake takes text), a controller
-persona, an inbound
-connection (mail or an ERP), a scheduled automation, agent memory, and
-per-tenant scopes. amodal-demo shows the last four on the same layout.
+- Change the examples in `amodal/_lib/examples.ts`.
+- Change judgment rules in `amodal/knowledge/spend-policy.md` and the
+  reviewer prompt. Change numeric thresholds together in that policy,
+  `amodal/_lib/policy.ts`, and `hooks/approval-guard/hook.json`.
+- Add fields to the store schema before changing handlers or the UI.
+  Keep `public/openapi.json` aligned with exposed stores.
+- Keep regression tests for hard rules and update the relevant eval
+  expectations when policy changes. Editing policy prose alone does not
+  change the arithmetic enforced by code.
+
+[amodal-demo](https://github.com/amodalai/amodal-demo) introduces the platform's
+building blocks one at a time. [access-request-agent](https://github.com/amodalai/access-request-agent)
+uses the same review-and-decide pattern for IT access. This template omits
+payment, real identity, file uploads, notifications, and production accounting
+integrations.
