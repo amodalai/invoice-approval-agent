@@ -2,6 +2,7 @@ import type { Recommendation } from "./invoice-review.js";
 
 export type EventKind =
   | "seeded"
+  | "received"
   | "submitted"
   | "resubmitted"
   | "reviewed"

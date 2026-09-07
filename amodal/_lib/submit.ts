@@ -1,6 +1,6 @@
 import { NEW_INVOICE_DEFAULTS } from "./demo-data.js";
 import { appendEvent } from "./events.js";
-import { rows, runInvoiceReview, storeGetResult, type InvoiceRow, type PORow, type ReviewDeps } from "./invoice-review.js";
+import { rows, runInvoiceReview, storeGetResult, type InvoiceRow, type LoadedInvoice, type PORow, type ReviewDeps } from "./invoice-review.js";
 import type { LineItem } from "./policy.js";
 
 export interface SubmitParams {
@@ -77,14 +77,19 @@ export function validateSubmission(input: unknown): SubmitParams {
   };
 }
 
+export interface SubmissionEvent {
+  kind: "received" | "submitted" | "resubmitted";
+  actor: string;
+  note?: string;
+}
+
 /**
- * Write the invoice (a new row, or the returned one at revision + 1), append
- * the event, then review the row held in memory: a run cannot read back its
- * own writes. A review failure leaves the invoice `new` for the approver's
- * Review button to retry.
+ * Write the invoice (a new row, or the returned one at revision + 1) and
+ * append its event. Returns the rows a review needs, held in memory: a run
+ * cannot read back its own writes.
  */
-export async function submitInvoice(input: unknown, deps: ReviewDeps) {
-  const { invoice_id: id, ...fields } = validateSubmission(input);
+export async function writeSubmission(params: SubmitParams, deps: ReviewDeps, event?: SubmissionEvent): Promise<LoadedInvoice> {
+  const { invoice_id: id, ...fields } = params;
   const nowIso = deps.now().toISOString();
   const others = rows<InvoiceRow>(
     await deps.callTool("store__invoices__query", { where: { vendor_name: fields.vendor_name }, limit: 200 }),
@@ -105,13 +110,24 @@ export async function submitInvoice(input: unknown, deps: ReviewDeps) {
     for (let n = 2; await taken(invoice_id); n += 1) invoice_id = `${base}_${n}`;
     invoice = { invoice_id, ...fields, revision: 1, ...NEW_INVOICE_DEFAULTS, received_at: nowIso, submitted_at: nowIso, created_at: nowIso };
   }
-  const revision = invoice.revision!;
   await deps.callTool("store__invoices__set", { key: invoice.invoice_id, value: invoice });
-  await appendEvent(deps, { invoice_id: invoice.invoice_id, kind: id ? "resubmitted" : "submitted", actor: fields.requester, revision });
+  const { kind, actor, note } = event ?? { kind: id ? "resubmitted" : "submitted", actor: fields.requester };
+  await appendEvent(deps, { invoice_id: invoice.invoice_id, kind, actor, note, revision: invoice.revision });
 
   const po = fields.po_number
     ? storeGetResult<PORow>(await deps.callTool("store__purchase_orders__get", { key: fields.po_number }))
     : undefined;
-  const out = await runInvoiceReview(invoice.invoice_id, deps, { invoice, po, others });
-  return { invoice_id: invoice.invoice_id, revision, recommendation: out.recommendation, review_id: out.review_id };
+  return { invoice, po, others };
+}
+
+/**
+ * The requester's form: validate, write, then review the row held in memory.
+ * A review failure leaves the invoice `new` for the approver's Review button
+ * to retry.
+ */
+export async function submitInvoice(input: unknown, deps: ReviewDeps) {
+  const loaded = await writeSubmission(validateSubmission(input), deps);
+  const { invoice } = loaded;
+  const out = await runInvoiceReview(invoice.invoice_id, deps, loaded);
+  return { invoice_id: invoice.invoice_id, revision: invoice.revision!, recommendation: out.recommendation, review_id: out.review_id };
 }

@@ -1,0 +1,6 @@
+{
+  "name": "Invoice Extractor",
+  "description": "Reads one vendor invoice as pasted text (an email, a PDF's text) and returns its fields as a JSON object: vendor, invoice number, purchase order, dates, total, line items, memo, requester. Extracts only; it never judges the invoice, approves, or pays anything.",
+  "tools": [],
+  "timeout": 60
+}
