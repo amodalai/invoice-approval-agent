@@ -125,6 +125,7 @@ function InvoiceForm({ data, initial }: { data: Data; initial?: InvoiceRow }) {
 
   return (
     <form className="card form" aria-busy={busy} onSubmit={(e) => void onSubmit(e)}>
+      <fieldset className="form__fields" disabled={busy} aria-label="Invoice details">
       <h3>{initial ? `Edit and resubmit #${initial.invoice_number}` : "Submit an invoice"}</h3>
       <div className="form__row">
         <label>
@@ -194,6 +195,7 @@ function InvoiceForm({ data, initial }: { data: Data; initial?: InvoiceRow }) {
           {busy ? "Submitting and reviewing…" : initial ? "Resubmit" : "Submit for review"}
         </button>
       </div>
+      </fieldset>
     </form>
   );
 }

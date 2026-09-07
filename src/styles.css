@@ -1494,13 +1494,30 @@ a.btn {
 
 .rail__reset, .nav__item { min-height: 44px; }
 
-input:not([type=checkbox]), select, textarea { border-color: #718096; }
+.form input:not([type=checkbox]),
+.form select,
+.form textarea,
+.lines input,
+.filter,
+.intake__text,
+.intake__who select,
+.modal__note { border-color: #718096; }
 input::placeholder, textarea::placeholder { color: var(--muted); opacity: 1; }
 
-:where(a, button, input, select, textarea, summary):focus-visible {
+:where(a, button, input, select, textarea, summary):focus-visible,
+.form input:focus-visible,
+.form select:focus-visible,
+.form textarea:focus-visible,
+.lines input:focus-visible,
+.filter:focus-visible,
+.intake__text:focus-visible,
+.intake__who select:focus-visible,
+.modal__note:focus-visible {
   outline: 3px solid var(--accent);
   outline-offset: 3px;
 }
+
+.form__fields { border: 0; margin: 0; padding: 0; min-width: 0; }
 
 @media (max-width: 1200px) {
   .screen__bar { flex-wrap: wrap; }

@@ -31,7 +31,7 @@ export function LineItemsEditor({ lines, onChange }: { lines: LineDraft[]; onCha
               <input aria-label={`Line ${i + 1} description`} required value={l.description} onChange={(e) => update(i, { description: e.target.value })} placeholder="What was delivered" />
             </td>
             <td className="num">
-              <input aria-label={`Line ${i + 1} quantity`} required type="number" min="0.01" step="any" value={l.quantity} onChange={(e) => update(i, { quantity: e.target.value })} />
+              <input aria-label={`Line ${i + 1} quantity`} required type="number" min="0" step="any" value={l.quantity} onChange={(e) => update(i, { quantity: e.target.value })} />
             </td>
             <td className="num">
               <input aria-label={`Line ${i + 1} unit price in dollars`} required type="number" min="0" step="0.01" value={l.unit_price_usd} onChange={(e) => update(i, { unit_price_usd: e.target.value })} />
