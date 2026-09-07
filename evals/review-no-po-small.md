@@ -15,7 +15,7 @@ Context: Self-seeding: on fresh stores the review_invoice tool loads the demo da
 
 ## Assertions
 
-- contains: approve
+- regex: /\bapprove\b/i
 - Should note that no purchase order is required under the $1,000 limit
 - Should mention the named requester
 - Should NOT recommend hold

@@ -17,7 +17,7 @@ Context: Self-seeding: on fresh stores the review_invoice tool loads the demo da
 
 ## Assertions
 
-- contains: escalate
+- regex: /\bescalate\b/i
 - Should state that the total exceeds the purchase order's remaining balance by more than the tolerance, with the numbers
 - Should mention the rush delivery fee as not covered by the PO
 - Should NOT recommend approve

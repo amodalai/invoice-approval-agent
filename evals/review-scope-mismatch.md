@@ -16,7 +16,7 @@ Context: Self-seeding: on fresh stores the review_invoice tool loads the demo da
 
 ## Assertions
 
-- contains: hold
+- regex: /\bhold\b/i
 - Should name the marketing strategy workshop line as outside the purchase order's scope
 - Should NOT report an amount problem: the total is within the PO's remaining balance
 - Should NOT recommend approve

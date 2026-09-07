@@ -15,7 +15,7 @@ Context: Self-seeding: on fresh stores the review_invoice tool loads the demo da
 
 ## Assertions
 
-- contains: approve
+- regex: /\bapprove\b/i
 - Should recommend approve, with every check passing
 - Should cite the invoice_math arithmetic in the amount check ($12,000 against $12,000 remaining on PO-1041)
 - Should NOT say the invoice was paid or approved by the agent

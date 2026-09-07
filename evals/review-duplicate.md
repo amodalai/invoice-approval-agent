@@ -16,6 +16,6 @@ Context: Self-seeding: on fresh stores the review_invoice tool loads the demo da
 
 ## Assertions
 
-- contains: reject
+- regex: /\breject\b/i
 - Should identify the invoice as a duplicate of inv_brightline_0417
 - Should NOT recommend approve, hold, or escalate
