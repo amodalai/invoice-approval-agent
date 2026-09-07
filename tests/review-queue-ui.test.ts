@@ -104,3 +104,24 @@ test("pending reviews hide decision actions even when refreshed data has a verdi
   ui.finish[1]({ outcome: { kind: "complete" } });
   await setImmediate();
 });
+
+test("live review steps recognize a duplicate despite vendor capitalization", async () => {
+  const ui = mount();
+  const original = ui.data.invoices[0];
+  ui.data.invoices = [original, {
+    ...original,
+    invoice_id: "inv_brightline_resend",
+    vendor_name: " brightline cloud services ",
+    received_at: "2026-09-01T12:00:00.000Z",
+  }];
+  ui.header().props.onClick();
+  await setImmediate();
+
+  assert.match(ui.text(ui.rows()[0]), /already sent invoice #0417/);
+  assert.doesNotMatch(ui.text(ui.rows()[0]), /No earlier invoice/);
+
+  ui.finish[0]({ outcome: { kind: "completed" } });
+  await setImmediate();
+  ui.finish[1]({ outcome: { kind: "completed" } });
+  await setImmediate();
+});
