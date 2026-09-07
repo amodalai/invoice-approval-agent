@@ -1,6 +1,6 @@
 import { NEW_INVOICE_DEFAULTS } from "./demo-data.js";
 import { appendEvent } from "./events.js";
-import { runInvoiceReview, storeGetResult, vendorInvoices, type InvoiceRow, type LoadedInvoice, type PORow, type ReviewDeps } from "./invoice-review.js";
+import { runInvoiceReview, storeGetResult, vendorInvoices, type InvoiceRow, type LoadedInvoice, type PORow, type Recommendation, type ReviewDeps } from "./invoice-review.js";
 import type { LineItem } from "./policy.js";
 
 export interface SubmitParams {
@@ -15,6 +15,14 @@ export interface SubmitParams {
   line_items: LineItem[];
   notes: string | null;
   requester: string;
+}
+
+export interface SubmissionOutcome {
+  invoice_id: string;
+  revision: number;
+  recommendation?: Recommendation;
+  review_id?: string;
+  review_error?: string;
 }
 
 export const slug = (s: string) => s.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
@@ -120,12 +128,16 @@ export async function writeSubmission(params: SubmitParams, deps: ReviewDeps, ev
 
 /**
  * The requester's form: validate, write, then review the row held in memory.
- * A review failure leaves the invoice `new` for the approver's Review button
- * to retry.
+ * A review failure returns the saved id so the caller can retry the review.
  */
-export async function submitInvoice(input: unknown, deps: ReviewDeps) {
+export async function submitInvoice(input: unknown, deps: ReviewDeps): Promise<SubmissionOutcome> {
   const loaded = await writeSubmission(validateSubmission(input), deps);
   const { invoice } = loaded;
-  const out = await runInvoiceReview(invoice.invoice_id, deps, loaded);
-  return { invoice_id: invoice.invoice_id, revision: invoice.revision!, recommendation: out.recommendation, review_id: out.review_id };
+  const saved = { invoice_id: invoice.invoice_id, revision: invoice.revision! };
+  try {
+    const out = await runInvoiceReview(invoice.invoice_id, deps, loaded);
+    return { ...saved, recommendation: out.recommendation, review_id: out.review_id };
+  } catch (error) {
+    return { ...saved, review_error: error instanceof Error ? error.message : String(error) };
+  }
 }

@@ -1,5 +1,5 @@
 {
-  "description": "Submit a vendor invoice for review, as a requester. Validates the fields, writes the invoice row (a new one, or the returned one at revision + 1 when invoice_id is given), appends the submitted or resubmitted event, then reviews the invoice in the same run: the deterministic checks in code, the policy judgment in the invoice-reviewer subagent. Returns { invoice_id, revision, recommendation, review_id }. Fired only from the requester's Submit form via the direct-invoke lane; not listed in any agent's tools.",
+  "description": "Submit a vendor invoice for review, as a requester. Validates the fields, writes the invoice row (a new one, or the returned one at revision + 1 when invoice_id is given), appends the submitted or resubmitted event, then reviews the invoice in the same run: the deterministic checks in code, the policy judgment in the invoice-reviewer subagent. Returns { invoice_id, revision, recommendation, review_id }, or { invoice_id, revision, review_error } when saved but the review failed. Retry that invoice's review instead of submitting it again. Fired only from the requester's Submit form via the direct-invoke lane; not listed in any agent's tools.",
   "parameters": {
     "type": "object",
     "additionalProperties": false,

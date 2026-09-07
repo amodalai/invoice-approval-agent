@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { slug, submitInvoice, validateSubmission } from "../amodal/_lib/submit.js";
 import { INVOICES, invoiceRow } from "../amodal/_lib/demo-data.js";
+import { runInvoiceReview } from "../amodal/_lib/invoice-review.js";
 import { assertDeclared, assertUsesReachable, fakeStore } from "./helpers.js";
 
 const NOW = "2026-09-01T12:00:00.000Z";
@@ -168,13 +169,33 @@ test("a resubmission is refused unless the invoice is returned", async () => {
   await assert.rejects(submitInvoice({ ...form, invoice_id: "inv_pixelforge_77" }, deps), /is new; only a returned invoice/);
 });
 
-test("a failing review leaves the invoice new, with its submitted event, and rethrows", async () => {
+test("a failing review returns the saved invoice so retrying reviews it without another submission", async () => {
   const { deps, store, events } = fakeDeps("THROW");
-  await assert.rejects(submitInvoice(form, deps), /reviewer down/);
+  const out = await submitInvoice(form, deps);
+  assert.deepEqual(out, { invoice_id: "inv_kestrel_courier_4410_b", revision: 1, review_error: "reviewer down" });
   const row = store.get("invoices:inv_kestrel_courier_4410_b")!;
   assert.equal(row.status, "new");
   assert.equal(row.review_id, null);
   assert.deepEqual(events().map((e) => e.kind), ["submitted"]);
+
+  deps.callSubagent = async () => REPLY;
+  await runInvoiceReview(out.invoice_id, deps);
+  assert.equal(store.get(`invoices:${out.invoice_id}`)!.status, "reviewed");
+  assert.equal([...store.keys()].filter((key) => key.startsWith(`invoices:${out.invoice_id}`)).length, 1);
+  assert.deepEqual(events().map((e) => e.kind), ["submitted", "reviewed"]);
+});
+
+test("a failed invoice write remains a submission failure", async () => {
+  const { deps, store, events } = fakeDeps();
+  await assert.rejects(submitInvoice(form, {
+    ...deps,
+    async callTool(name, args) {
+      if (name === "store__invoices__set") throw new Error("store unavailable");
+      return deps.callTool(name, args);
+    },
+  }), /store unavailable/);
+  assert.equal(store.has("invoices:inv_kestrel_courier_4410_b"), false);
+  assert.deepEqual(events(), []);
 });
 
 test("submit_invoice declares no store tool its runs cannot reach", () => {
