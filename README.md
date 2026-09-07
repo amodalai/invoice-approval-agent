@@ -55,13 +55,14 @@ and an `{ "kind": "invoke" }` trigger in its `tool.json`:
 - [`seed_examples`](amodal/tools/seed_examples/tool.json) loads the demo
   dataset. The app runs it the first time it opens on empty stores; the
   `seed` chat command runs the same tool, idempotent per row.
-- [`intake_invoice`](amodal/tools/intake_invoice/tool.json) takes a pasted
-  document, has the [`invoice-extractor`](agents/invoice-extractor/AGENT.md)
-  subagent read it against the open purchase orders, validates the fields,
+- [`intake_invoice`](amodal/tools/intake_invoice/tool.json) takes a document
+  from chat or the paste panel, has the
+  [`invoice-extractor`](agents/invoice-extractor/AGENT.md) subagent read it against the open purchase orders, validates the fields,
   resolves the requester (the document, else the purchase order, else the
   caller's pick), writes the invoice as `new`, and appends a `received`
   event. It does not review: the inbox runs `review_invoice` next, so the
-  review's steps are watched, not reported.
+  review's steps are watched, not reported. Chat confirms the saved id and
+  runs `review_invoice` if the user also requests review.
 - [`submit_invoice`](amodal/tools/submit_invoice/tool.json) validates the
   requester's form, writes the invoice, appends a `submitted` event, and
   reviews the row it holds in memory, all in one run.
@@ -132,7 +133,7 @@ hard rules before an approval and refuses when one fails, requires a note to
 return an invoice or to approve one the review escalated, adds an approved
 total to the PO's billed-to-date, and appends the event. A returned invoice
 goes back to its requester, who edits and resubmits it at the next revision.
-`decide_invoice`, `intake_invoice`, `submit_invoice`, and `reset_demo` are in
+`decide_invoice`, `submit_invoice`, and `reset_demo` are in
 no agent's `tools` list, so the model cannot call them.
 
 The `events` store holds one row per action (`seeded`, `received`,
@@ -168,7 +169,7 @@ true for every writer, including the chat agent's store tools.
 | `amodal/_lib/examples.ts` / `demo-data.ts`  | The demo dataset (five live invoices plus a decided backlog with its reviews and events) and the code that hydrates it into the four stores. |
 | `amodal/tools/review_invoice/`              | The durable review tool (`tool.json` + `handler.ts`): declares its `uses`, the `review` regex trigger, and the `invoke` trigger. |
 | `amodal/tools/seed_examples/`               | The seeding tool behind the `seed` trigger and the app's first open.                                   |
-| `amodal/tools/intake_invoice/`              | Invoke-lane tool behind the paste panel: a document in, an unreviewed invoice out.                       |
+| `amodal/tools/intake_invoice/`              | Tool for chat and the paste panel: a document in, an unreviewed invoice out.                       |
 | `amodal/tools/submit_invoice/`              | Invoke-lane tool behind the requester's form.                                                          |
 | `amodal/tools/decide_invoice/`              | Invoke-lane tool behind Approve / Return / Reject: the approver's decision, recorded.                   |
 | `amodal/tools/reset_demo/`                  | Invoke-lane tool behind Reset demo data.                                                               |
@@ -254,9 +255,11 @@ variables are needed.
    PO-1063?`, or `would $2,600 be within tolerance on PO-1052?`. It answers
    from the events store, the other stores, and `invoice_math`, never from
    arithmetic in its head. Ask it to approve or return something and it
-   points you at the inbox.
+   points you at the inbox. To add an invoice, paste its text or give its
+   details in chat and ask to add it. Chat saves it and returns the invoice
+   id; ask to review it too to get a recommendation.
 9. **Reset demo data** at the bottom of the rail puts everything back.
-10. Open the agent's **Evals** page and run the suite: nine green checks.
+10. Open the agent's **Evals** page and run the suite.
     Then edit `spend-policy.md`, raise the no-PO limit to $500, redeploy, and
     re-run: `review-no-po-small` fails while the rest stay green.
 

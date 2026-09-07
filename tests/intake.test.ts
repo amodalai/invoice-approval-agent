@@ -1,5 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
+import agent from "../agents/default/agent.json";
 import { intakeInvoice, parseExtraction } from "../amodal/_lib/intake.js";
 import intake_invoice from "../amodal/tools/intake_invoice/handler.js";
 import type { CustomToolContext } from "../amodal/_types/tool-context.js";
@@ -141,4 +142,31 @@ test("the handler wires the composite context and its uses reach every grant", a
   await assert.rejects(intake_invoice({ document: "x" }, { ...ctx, callSubagent: undefined }), /composite context/);
   assertDeclared("intake_invoice", calls.map(([n]) => n));
   assertUsesReachable("intake_invoice");
+});
+
+test("chat can intake an invoice through its granted tool without deciding it", async () => {
+  assert.ok(agent.tools.includes("intake_invoice"), "chat must be able to call intake_invoice");
+  for (const name of ["decide_invoice", "submit_invoice", "reset_demo"]) {
+    assert.ok(!agent.tools.includes(name), `${name} stays UI-only`);
+  }
+  const { store, callTool } = fakeStore(NOW);
+  const out = await intake_invoice({ document: "Atlas invoice 9920" }, {
+    log() {},
+    signal: new AbortController().signal,
+    sessionId: "chat-session",
+    now: () => Date.parse(NOW),
+    async callTool(name, args) {
+      const storeName = /^store__(\w+)__/.exec(name)![1] as keyof typeof agent.stores;
+      assert.equal(agent.stores[storeName], "rw");
+      return callTool(name, args);
+    },
+    async callSubagent() { return JSON.stringify(extracted); },
+  });
+  const invoice = store.get(`invoices:${out.invoice_id}`)!;
+  assert.equal(invoice.status, "new");
+  assert.equal(invoice.review_id, null);
+  const events = [...store.entries()].filter(([key]) => key.startsWith("events:")).map(([, row]) => row);
+  assert.deepEqual(events.map(({ invoice_id, kind, actor }) => [invoice_id, kind, actor]), [
+    [out.invoice_id, "received", "agent"],
+  ]);
 });

@@ -1,10 +1,10 @@
 {
-  "description": "Turn a pasted document (a vendor's email, the text of a PDF invoice) into an invoice row. The invoice-extractor subagent reads the text against the open purchase orders and returns the fields; code validates them, resolves the requester (from the document, else the purchase order, else the caller's choice), writes the invoice as `new`, and appends a `received` event. It does not review: the UI runs review_invoice next so the approver watches the review happen. Returns { invoice_id, revision, invoice }. Fired only from the paste panel via the direct-invoke lane; not listed in any agent's tools.",
+  "description": "Turn a pasted document (a vendor's email, the text of a PDF invoice) into an invoice row. The invoice-extractor subagent reads the text against the open purchase orders and returns the fields; code validates them, resolves the requester (from the document, else the purchase order, else the caller's choice), writes the invoice as `new`, and appends a `received` event. It does not review: the UI runs review_invoice next; chat calls review_invoice with the saved id when the user also requests review. Returns { invoice_id, revision, invoice }. Available to the chat agent and to the paste panel via the direct-invoke lane.",
   "parameters": {
     "type": "object",
     "additionalProperties": false,
     "properties": {
-      "document": { "type": "string", "description": "The invoice as text: an email body, a PDF's text, a scan's OCR output." },
+      "document": { "type": "string", "description": "The invoice as text: an email body, a PDF's text, a scan's OCR output, or invoice details supplied in chat." },
       "requester": { "type": "string", "description": "Who asked for the work, as Name (Team), used when neither the document nor the purchase order names one." }
     },
     "required": ["document"]

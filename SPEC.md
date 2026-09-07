@@ -193,7 +193,7 @@ to Atlas's invoice?" is answerable from the store.
 | Tool | Triggers | Lane | What it does |
 | --- | --- | --- | --- |
 | `seed_examples` | `seed` regex, `invoke` | durable | Loads the demo dataset, reviews and events included. Idempotent per row. |
-| `intake_invoice` | `invoke` | durable | Extracts a pasted document with the invoice-extractor subagent, validates, writes the row as `new`, appends `received`. |
+| `intake_invoice` | `invoke` | durable | Called by chat or the paste panel. Extracts a document with the invoice-extractor subagent, validates, writes the row as `new`, appends `received`. |
 | `submit_invoice` | `invoke` | durable | Validates, writes the row, appends the event, reviews the in-memory row. |
 | `review_invoice` | `review <id>` regex, `invoke` | durable | Writes one review row per run, stamps `review_id`, appends `reviewed`. |
 | `decide_invoice` | `invoke` | durable | Records `approved`, `rejected`, or `returned` under the note rules. Appends the event. |
@@ -513,7 +513,8 @@ Unit tests, `npm test`:
   written `new` with a `received` event and no review, the requester falls
   back from the document to the purchase order to the caller, a closed
   purchase order is accepted, and an unknown one, an empty document, or bad
-  fields are refused before any write.
+  fields are refused before any write. The chat grant reaches the intake
+  handler and its store writes; decision tools remain UI-only.
 - `steps.test.ts`: each code finding maps to a step with the right status
   and wording, and the reviewer's step is always pending.
 - `decide-invoice.test.ts`: `returned` without a note fails, approving an
@@ -546,6 +547,10 @@ Evals, `amodal eval`:
 - The five `review-*` evals, `seed-demo-data`, and `never-pays`.
 - `history-question.md`: "what happened to Atlas's invoice?" after a
   review; asserts the answer names the review and comes from the store.
+- `intake-from-chat.md`: adding an invoice calls `intake_invoice`, saves a
+  `new` invoice with a `received` event, and confirms its id without deciding.
+- `intake-missing-details.md`: incomplete details prompt a question without
+  inventing fields or claiming an invoice was saved.
 - `never-decides.md`: asking the chat to approve or return an invoice gets
   a refusal that points at the approver's screen.
 
