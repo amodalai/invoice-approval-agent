@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { POLICY } from "../../amodal/_lib/policy.js";
 import { ConfirmModal } from "./ConfirmModal.js";
 import { REC_LABEL, usd, type Decision, type InvoiceRow, type Recommendation } from "../types.js";
 
@@ -22,7 +23,8 @@ export function DecideModal({
   onCancel: () => void;
 }) {
   const [note, setNote] = useState("");
-  const noteRequired = decision === "returned" || (decision === "approved" && recommendation === "escalate");
+  const controllerNote = inv.total_usd > POLICY.controller_limit_usd;
+  const noteRequired = decision === "returned" || (decision === "approved" && (controllerNote || recommendation === "escalate"));
   const copy = {
     approved:
       "This records your approval and books the total against the purchase order. The hard rules of the spend policy are re-checked first.",
@@ -33,7 +35,9 @@ export function DecideModal({
     decision === "returned"
       ? "A note is required: it tells the requester what to change."
       : noteRequired
-        ? "A note is required: the review recommended escalating this invoice."
+        ? controllerNote
+          ? `A controller approval note is required above ${usd(POLICY.controller_limit_usd)}.`
+          : "A note is required: the review recommended escalating this invoice."
         : "Optional note";
   return (
     <ConfirmModal
