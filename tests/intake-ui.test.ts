@@ -22,14 +22,14 @@ function mount({ review = true, failReview = false, failDone = false, failIntake
               failIntake = false;
               return { outcome: { kind: "failed", reason: "Extraction failed" } };
             }
-            return { outcome: { kind: "completed" }, result: { invoice_id: `inv_${calls.intake.length}` } };
+            return { outcome: { kind: "complete" }, result: { invoice_id: `inv_${calls.intake.length}` } };
           }
           calls.review.push(input.invoice_id);
           if (failReview) {
             failReview = false;
             return { outcome: { kind: "failed", reason: "Review failed" } };
           }
-          return { outcome: { kind: "completed" } };
+          return { outcome: { kind: "complete" } };
         } };
       },
     },

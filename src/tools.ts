@@ -6,13 +6,12 @@ interface Launcher<I> {
 
 /**
  * Run an invoke-lane tool and return the handler's result. The SDK resolves
- * a thrown handler error as `outcome.kind: "failed"` with the message in
- * `reason` (prefixed by the runtime with the tool's name), so this turns it
- * back into a rejection carrying the handler's own message.
+ * an unsuccessful run with a reason prefixed by the tool name. Keep
+ * interrupted runs on the error path so callers do not report success.
  */
 export async function runTool<I, R = unknown>(launcher: Launcher<I>, input: I): Promise<R | undefined> {
   const res = (await launcher.run(input)) as ResolvedToolRun & { result?: R };
-  if (res.outcome.kind === "failed") {
+  if (res.outcome.kind !== "complete") {
     throw new Error((res.outcome.reason ?? "The tool run failed.").replace(/^Tool "[^"]+" failed: /, ""));
   }
   return res.result;

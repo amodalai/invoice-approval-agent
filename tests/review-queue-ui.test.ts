@@ -74,14 +74,14 @@ for (const failFirst of [false, true]) {
     assert.equal(ui.text(ui.header()), "Reviewing 1 · 1 queued…");
     assert.equal(ui.header().props.disabled, true);
     for (const row of ui.rows()) assert.equal(walk(row, true).filter((el) => el.type === "button").length, 0);
-    ui.finish[0]({ outcome: failFirst ? { kind: "failed", reason: "Review failed" } : { kind: "completed" } });
+    ui.finish[0]({ outcome: failFirst ? { kind: "failed", reason: "Review failed" } : { kind: "complete" } });
     await setImmediate();
     assert.deepEqual(ui.started, [first.invoice_id, second.invoice_id]);
     assert.doesNotMatch(ui.text(ui.rows()[0]), /Reviewer reading|Queued for review/);
     assert.match(ui.text(ui.rows()[1]), /Reviewer reading/);
     assert.equal(ui.text(ui.header()), "Reviewing 1…");
     if (failFirst) assert.match(ui.text(ui.rows()[0]), /Review failed/);
-    ui.finish[1]({ outcome: { kind: "completed" } });
+    ui.finish[1]({ outcome: { kind: "complete" } });
     await setImmediate();
     assert.equal(ui.text(ui.header()), "Review all 2");
     assert.ok(ui.rows().every((row) => !/Reviewer reading|Queued for review/.test(ui.text(row))));
@@ -97,10 +97,10 @@ test("pending reviews hide decision actions even when refreshed data has a verdi
   }
   await setImmediate();
   for (const row of ui.rows()) assert.equal(walk(row, true).filter((el) => el.type === "button").length, 0);
-  ui.finish[0]({ outcome: { kind: "completed" } });
+  ui.finish[0]({ outcome: { kind: "complete" } });
   await setImmediate();
   assert.ok(walk(ui.rows()[0], true).some((el) => el.type === "button" && el.props.children === "Approve"));
   assert.equal(walk(ui.rows()[1], true).filter((el) => el.type === "button").length, 0);
-  ui.finish[1]({ outcome: { kind: "completed" } });
+  ui.finish[1]({ outcome: { kind: "complete" } });
   await setImmediate();
 });
