@@ -11,9 +11,9 @@
  * Fires on `preToolUse` for `store__invoices__set` (rows carrying
  * `status: "approved"` or `recommendation: "approve"`) and
  * `store__reviews__set` (rows carrying `recommendation: "approve"`). It
- * resolves the invoice, then checks three rules: no duplicate of an earlier
- * invoice, no missing PO over the limit, and no total over the PO's
- * remaining balance by more than the tolerance. A rule it cannot evaluate
+ * resolves the invoice, then checks duplicates, the line total, a required
+ * PO, its vendor and open status, and the remaining balance plus tolerance.
+ * A rule it cannot evaluate
  * because the rows are not there yet (fresh stores, where the seeding run
  * cannot read back its own writes) passes: the handlers already enforced it
  * in code. Fail-closed: if a store read throws, the manifest's
@@ -70,6 +70,12 @@ export function createHook(config) {
       const id = String(invoice.invoice_id ?? "");
       const total = num(invoice.total_usd, 0);
       const poNumber = typeof invoice.po_number === "string" ? invoice.po_number : null;
+      const lineSum = round((Array.isArray(invoice.line_items) ? invoice.line_items : []).reduce(
+        (sum, line) => sum + num(line?.quantity, 0) * num(line?.unit_price_usd, 0), 0,
+      ));
+      if (Math.abs(lineSum - total) >= 0.005) {
+        return block(ctx, toolName, id, `line items sum to $${lineSum}, not the stated total`);
+      }
 
       const others = await ctx.store.query("invoices");
       const original = (others ?? []).find(
@@ -89,9 +95,13 @@ export function createHook(config) {
 
       const po = await ctx.store.get("purchase_orders", poNumber);
       if (!po) return { action: "allow" };
-      const remaining = num(po.amount_usd, 0) - num(po.billed_to_date_usd, 0);
-      const tolerance = Math.max(toleranceMin, remaining * tolerancePct);
-      if (total > remaining + tolerance) {
+      if (norm(po.vendor_name) !== norm(invoice.vendor_name)) {
+        return block(ctx, toolName, id, "the purchase order belongs to a different vendor");
+      }
+      if (po.status === "closed") return block(ctx, toolName, id, "the purchase order is closed");
+      const remaining = round(num(po.amount_usd, 0) - num(po.billed_to_date_usd, 0));
+      const tolerance = round(Math.max(toleranceMin, remaining * tolerancePct));
+      if (round(total - remaining) > tolerance) {
         return block(
           ctx,
           toolName,

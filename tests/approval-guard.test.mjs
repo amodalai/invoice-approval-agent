@@ -19,15 +19,17 @@ function ctx(rows) {
 }
 
 const write = (toolName, value) => ({ toolName, args: { key: value.invoice_id ?? value.review_id, value } });
+const lines = (total) => [{ description: "Services", quantity: 1, unit_price_usd: total }];
 const brightline = {
   invoice_id: "inv_brightline_0417",
   vendor_name: "Brightline Cloud Services",
   invoice_number: "0417",
   po_number: "PO-1041",
   total_usd: 12_000,
+  line_items: lines(12_000),
   received_at: "2026-08-25T09:00:00.000Z",
 };
-const po = { po_number: "PO-1041", amount_usd: 12_000, billed_to_date_usd: 0 };
+const po = { po_number: "PO-1041", vendor_name: brightline.vendor_name, status: "open", amount_usd: 12_000, billed_to_date_usd: 0 };
 
 test("ignores other tools, other points, and non-approval writes", async () => {
   const c = ctx({ purchase_orders: [po], invoices: [brightline] });
@@ -41,7 +43,7 @@ test("ignores other tools, other points, and non-approval writes", async () => {
 test("allows a clean approval and blocks one over tolerance", async () => {
   const c = ctx({ purchase_orders: [po], invoices: [brightline] });
   assert.equal((await hook.run("preToolUse", write("store__invoices__set", { ...brightline, status: "approved" }), c)).action, "allow");
-  const over = await hook.run("preToolUse", write("store__invoices__set", { ...brightline, total_usd: 12_300, recommendation: "approve" }), c);
+  const over = await hook.run("preToolUse", write("store__invoices__set", { ...brightline, total_usd: 12_300, line_items: lines(12_300), recommendation: "approve" }), c);
   assert.equal(over.action, "block");
   assert.match(over.reason, /exceeds the \$12000 remaining on PO-1041 by more than the \$240 tolerance/);
   const billed = ctx({ purchase_orders: [{ ...po, billed_to_date_usd: 12_000 }], invoices: [brightline] });
@@ -61,9 +63,9 @@ test("blocks a duplicate of an earlier invoice, on both the invoice and the revi
 
 test("blocks a missing PO over the limit and allows one under it", async () => {
   const c = ctx({ invoices: [] });
-  const small = { invoice_id: "inv_p", vendor_name: "PixelForge", invoice_number: "77", po_number: null, total_usd: 650, received_at: "x" };
+  const small = { invoice_id: "inv_p", vendor_name: "PixelForge", invoice_number: "77", po_number: null, total_usd: 650, line_items: lines(650), received_at: "x" };
   assert.equal((await hook.run("preToolUse", write("store__invoices__set", { ...small, status: "approved" }), c)).action, "allow");
-  const big = await hook.run("preToolUse", write("store__invoices__set", { ...small, total_usd: 1_001, status: "approved" }), c);
+  const big = await hook.run("preToolUse", write("store__invoices__set", { ...small, total_usd: 1_001, line_items: lines(1_001), status: "approved" }), c);
   assert.equal(big.action, "block");
   assert.match(big.reason, /over \$1000 with no purchase order/);
 });
@@ -73,8 +75,38 @@ test("duplicate lookup normalizes vendors without matching another vendor's invo
   const c = ctx({ purchase_orders: [po], invoices: [brightline, resend] });
   assert.equal((await hook.run("preToolUse", write("store__invoices__set", resend), c)).action, "block");
 
-  const otherVendor = { ...resend, invoice_id: "inv_other", vendor_name: "Other vendor", po_number: null, total_usd: 100 };
+  const otherVendor = { ...resend, invoice_id: "inv_other", vendor_name: "Other vendor", po_number: null, total_usd: 100, line_items: lines(100) };
   assert.equal((await hook.run("preToolUse", write("store__invoices__set", otherVendor), c)).action, "allow");
+});
+
+test("blocks vendor mismatches and closed purchase orders on invoice and review approvals", async () => {
+  for (const [purchaseOrder, reason] of [
+    [{ ...po, vendor_name: "Other vendor" }, /different vendor/],
+    [{ ...po, status: "closed" }, /closed/],
+  ]) {
+    const c = ctx({ purchase_orders: [purchaseOrder], invoices: [brightline] });
+    for (const [tool, value] of [
+      ["store__invoices__set", { ...brightline, status: "approved" }],
+      ["store__reviews__set", { review_id: "rev_x", invoice_id: brightline.invoice_id, recommendation: "approve" }],
+    ]) {
+      const result = await hook.run("preToolUse", write(tool, value), c);
+      assert.equal(result.action, "block");
+      assert.match(result.reason, reason);
+    }
+  }
+});
+
+test("blocks line-total mismatches even without a purchase order or visible stored invoice", async () => {
+  const invoice = { ...brightline, po_number: null, total_usd: 650, line_items: lines(600), status: "approved" };
+  const result = await hook.run("preToolUse", write("store__invoices__set", invoice), ctx({}));
+  assert.equal(result.action, "block");
+  assert.match(result.reason, /line items sum to \$600/);
+});
+
+test("rounds the percentage tolerance to cents like invoice_math", async () => {
+  const c = ctx({ purchase_orders: [{ ...po, amount_usd: 3333.33 }], invoices: [] });
+  const invoice = { ...brightline, total_usd: 3400, line_items: lines(3400), status: "approved" };
+  assert.equal((await hook.run("preToolUse", write("store__invoices__set", invoice), c)).action, "allow");
 });
 
 test("passes what it cannot see yet (fresh stores) and blocks without a store reader", async () => {
