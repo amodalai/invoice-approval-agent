@@ -18,6 +18,10 @@ test("every demo invoice's lines add up to its total and names a known requester
   }
 });
 
+test("every canned review carries a one-sentence reason", () => {
+  for (const inv of BACKLOG) for (const r of inv.reviews) assert.match(r.reason, /^[A-Z].*\.$/, inv.invoice_id);
+});
+
 test("every cited purchase order exists and belongs to the same vendor", () => {
   for (const inv of ALL_INVOICES) {
     if (!inv.po_number) continue;

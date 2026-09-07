@@ -54,6 +54,7 @@ Your final reply must be ONLY a JSON object with this exact shape. No prose befo
 ```
 {
   "recommendation": "approve" | "hold" | "escalate" | "reject",
+  "reason": "<ONE sentence for the approver's inbox row, in everyday words: the single thing that drives the recommendation. Name the line, the fee, or the rule, not ids or arithmetic. For an approve, say what the invoice is and that it matches the order.>",
   "summary": "<2-3 sentence summary: what this invoice is, and the key driver(s) of the recommendation>",
   "checks": [
     { "name": "purchase-order" | "amount" | "line-items" | "duplicate",
@@ -64,4 +65,4 @@ Your final reply must be ONLY a JSON object with this exact shape. No prose befo
 }
 ```
 
-Return one check per category above. Do not recommend anything you couldn't defend to a controller who reviewed the same invoice.
+`reason` is read by someone scanning a list of invoices: "The marketing workshop line is not covered by this purchase order, which is for data migration consulting." beats "line-items check flagged". Return one check per category above. Do not recommend anything you couldn't defend to a controller who reviewed the same invoice.

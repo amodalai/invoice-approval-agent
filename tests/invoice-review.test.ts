@@ -73,7 +73,9 @@ test("clamping keeps the reviewer's call unless the floor is more conservative",
 test("parses the reviewer's JSON even when wrapped in fences or prose", () => {
   const r = parseReviewResult('Here you go:\n```json\n{"recommendation":"hold","summary":"s","checks":[],"issues":["a"]}\n```');
   assert.equal(r.recommendation, "hold");
+  assert.equal(r.reason, "");
   assert.deepEqual(r.issues, ["a"]);
+  assert.equal(parseReviewResult('{"recommendation":"hold","reason":" The fee. "}').reason, "The fee.");
   assert.throws(() => parseReviewResult("no json here"), /no JSON object/);
   assert.throws(() => parseReviewResult('{"summary":"x"}'), /missing a string/);
 });
@@ -108,6 +110,7 @@ function fakeDeps(reviewerReply: string, seedAt?: string) {
 
 const REPLY = JSON.stringify({
   recommendation: "approve",
+  reason: "Hosting for August, as ordered.",
   summary: "Looks fine.",
   checks: [{ name: "amount", status: "pass", note: "ok" }],
   issues: [],
@@ -129,6 +132,14 @@ test("on fresh stores the review seeds the dataset and reviews the in-memory exa
   const review = store.get(`reviews:${review_id}`)!;
   assert.equal(review.reviewer_session_id, "sess");
   assert.equal(review.revision, 1);
+  assert.equal(review.reason, "Hosting for August, as ordered.");
+  assert.equal(out.reason, "Hosting for August, as ordered.");
+});
+
+test("a reviewer that gives no reason gets its summary as the row's sentence", async () => {
+  const { deps } = fakeDeps(JSON.stringify({ recommendation: "approve", summary: "looks fine", checks: [], issues: [] }));
+  const out = await runInvoiceReview("inv_brightline_0417", deps);
+  assert.equal(out.reason, "Looks fine.");
 });
 
 test("every run keeps its own review row, the invoice names the latest, and a reviewed event is appended", async () => {
@@ -164,6 +175,7 @@ test("code clamps an approve the facts forbid and folds the blockers into the is
   const out = await runInvoiceReview("inv_norwood_2288", deps);
   assert.equal(out.recommendation, "escalate");
   assert.match(out.issues![0], /over the PO's remaining balance/);
+  assert.equal(out.reason, "Over the PO's remaining balance by $390 (tolerance $50).");
   assert.ok(traces.some((t) => t.includes("clamped the recommendation from `approve` to `escalate`")));
 });
 

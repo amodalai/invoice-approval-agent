@@ -46,6 +46,8 @@ export interface Check {
 
 export interface ReviewResult {
   recommendation: string;
+  /** One plain sentence for the inbox row: what drives the recommendation. */
+  reason: string;
   summary: string;
   checks: Check[];
   issues: string[];
@@ -72,6 +74,7 @@ export function reviewKey(invoice_id: string, revision: number, createdAt: Date)
 
 const norm = (s: unknown) => String(s ?? "").trim().toLowerCase();
 const money = (n: number) => `$${n.toLocaleString("en-US")}`;
+const sentence = (s: string) => (s ? s[0].toUpperCase() + s.slice(1).replace(/\.?$/, ".") : "");
 
 /**
  * The earliest other invoice from the same vendor with the same invoice
@@ -184,6 +187,7 @@ export function parseReviewResult(text: string): ReviewResult {
   }
   return {
     recommendation: r.recommendation,
+    reason: typeof r.reason === "string" ? r.reason.trim() : "",
     summary: typeof r.summary === "string" ? r.summary : "",
     checks: Array.isArray(r.checks) ? r.checks : [],
     issues: Array.isArray(r.issues) ? r.issues : [],
@@ -239,6 +243,7 @@ export interface ReviewOutcome {
   vendor_name?: string;
   total_usd?: number;
   recommendation?: Recommendation;
+  reason?: string;
   summary?: string;
   checks?: Check[];
   issues?: string[];
@@ -371,10 +376,13 @@ export async function runInvoiceReview(
 
   const review = parseReviewResult(reviewText);
   const recommendation = clampRecommendation(review.recommendation, facts);
-  if (recommendation !== review.recommendation) {
+  const clamped = recommendation !== review.recommendation;
+  if (clamped) {
     deps.trace?.(`Code clamped the recommendation from \`${review.recommendation}\` to \`${recommendation}\`.`);
   }
   const issues = Array.from(new Set([...blockers, ...review.issues]));
+  // A clamp means the reviewer's sentence argues for a softer call than the rule allows.
+  const reason = clamped || !review.reason ? sentence(blockers[0] ?? review.summary) : review.reason;
 
   const now = deps.now();
   const nowIso = now.toISOString();
@@ -387,6 +395,7 @@ export async function runInvoiceReview(
       invoice_id,
       revision,
       recommendation,
+      reason,
       summary: review.summary,
       checks: review.checks,
       issues,
@@ -407,6 +416,7 @@ export async function runInvoiceReview(
     vendor_name: invoice.vendor_name,
     total_usd: invoice.total_usd,
     recommendation,
+    reason,
     summary: review.summary,
     checks: review.checks,
     issues,
