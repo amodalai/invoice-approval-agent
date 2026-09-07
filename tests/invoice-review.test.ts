@@ -237,6 +237,17 @@ test("a duplicate is rejected whatever the reviewer says, from the stored rows",
   assert.equal(out.issues![0], "duplicate of inv_brightline_0417");
 });
 
+test("stored duplicate lookup ignores vendor capitalization and surrounding whitespace", async () => {
+  const { deps, store } = fakeDeps(REPLY, NOW);
+  const id = "inv_brightline_0417_resend";
+  store.set(`invoices:${id}`, { ...store.get(`invoices:${id}`)!, vendor_name: " brightline cloud services " });
+
+  const out = await runInvoiceReview(id, deps);
+
+  assert.equal(out.recommendation, "reject");
+  assert.equal(out.issues![0], "duplicate of inv_brightline_0417");
+});
+
 test("an unknown invoice reports found: false without writing", async () => {
   const { deps, calls } = fakeDeps(REPLY);
   assert.deepEqual(await runInvoiceReview("inv_nope", deps), { found: false, invoice_id: "inv_nope" });

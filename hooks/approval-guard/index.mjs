@@ -71,10 +71,11 @@ export function createHook(config) {
       const total = num(invoice.total_usd, 0);
       const poNumber = typeof invoice.po_number === "string" ? invoice.po_number : null;
 
-      const others = await ctx.store.query("invoices", { vendor_name: invoice.vendor_name });
+      const others = await ctx.store.query("invoices");
       const original = (others ?? []).find(
         (o) =>
           o.invoice_id !== id &&
+          norm(o.vendor_name) === norm(invoice.vendor_name) &&
           norm(o.invoice_number) === norm(invoice.invoice_number) &&
           (String(o.received_at) < String(invoice.received_at) ||
             (String(o.received_at) === String(invoice.received_at) && String(o.invoice_id) < id)),

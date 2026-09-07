@@ -1,6 +1,6 @@
 import { NEW_INVOICE_DEFAULTS } from "./demo-data.js";
 import { appendEvent } from "./events.js";
-import { rows, runInvoiceReview, storeGetResult, type InvoiceRow, type LoadedInvoice, type PORow, type ReviewDeps } from "./invoice-review.js";
+import { runInvoiceReview, storeGetResult, vendorInvoices, type InvoiceRow, type LoadedInvoice, type PORow, type ReviewDeps } from "./invoice-review.js";
 import type { LineItem } from "./policy.js";
 
 export interface SubmitParams {
@@ -91,9 +91,7 @@ export interface SubmissionEvent {
 export async function writeSubmission(params: SubmitParams, deps: ReviewDeps, event?: SubmissionEvent): Promise<LoadedInvoice> {
   const { invoice_id: id, ...fields } = params;
   const nowIso = deps.now().toISOString();
-  const others = rows<InvoiceRow>(
-    await deps.callTool("store__invoices__query", { where: { vendor_name: fields.vendor_name }, limit: 200 }),
-  );
+  const others = await vendorInvoices(fields.vendor_name, deps);
 
   let invoice: InvoiceRow;
   if (id) {

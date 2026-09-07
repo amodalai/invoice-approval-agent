@@ -121,6 +121,20 @@ test("an id another vendor spelling already took gets the numeric suffix", async
   assert.deepEqual(store.get("invoices:inv_acme_inc_100"), existing);
 });
 
+test("submission recognizes a duplicate when the vendor changes capitalization", async () => {
+  const { deps } = fakeDeps();
+  const out = await submitInvoice({
+    ...form,
+    vendor_name: "brightline cloud services",
+    invoice_number: "0417",
+    po_number: "PO-1041",
+    total_usd: 12_000,
+    line_items: [{ description: "Hosting", quantity: 1, unit_price_usd: 12_000 }],
+  }, deps);
+
+  assert.equal(out.recommendation, "reject");
+});
+
 test("a resubmission replaces a returned invoice at revision + 1 and clears the return", async () => {
   const { deps, store, events, calls } = fakeDeps();
   const returned = invoiceRow({ ...INVOICES[3], invoice_id: "inv_x", requester: OMAR }, "2026-08-01T00:00:00.000Z");

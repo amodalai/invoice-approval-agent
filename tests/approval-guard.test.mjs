@@ -68,6 +68,15 @@ test("blocks a missing PO over the limit and allows one under it", async () => {
   assert.match(big.reason, /over \$1000 with no purchase order/);
 });
 
+test("duplicate lookup normalizes vendors without matching another vendor's invoice number", async () => {
+  const resend = { ...brightline, invoice_id: "inv_resend", vendor_name: " brightline cloud services ", received_at: "2026-08-30T09:00:00.000Z", status: "approved" };
+  const c = ctx({ purchase_orders: [po], invoices: [brightline, resend] });
+  assert.equal((await hook.run("preToolUse", write("store__invoices__set", resend), c)).action, "block");
+
+  const otherVendor = { ...resend, invoice_id: "inv_other", vendor_name: "Other vendor", po_number: null, total_usd: 100 };
+  assert.equal((await hook.run("preToolUse", write("store__invoices__set", otherVendor), c)).action, "allow");
+});
+
 test("passes what it cannot see yet (fresh stores) and blocks without a store reader", async () => {
   const fresh = ctx({});
   assert.equal((await hook.run("preToolUse", write("store__reviews__set", { review_id: "rev_x", invoice_id: "inv_x", recommendation: "approve" }), fresh)).action, "allow");

@@ -255,6 +255,12 @@ export interface LoadedInvoice {
   others: InvoiceRow[];
 }
 
+export async function vendorInvoices(vendor_name: string, deps: Pick<ReviewDeps, "callTool">): Promise<InvoiceRow[]> {
+  // Store equality is case-sensitive; the duplicate rule is not.
+  return rows<InvoiceRow>(await deps.callTool("store__invoices__query", { limit: 1000 }))
+    .filter((invoice) => norm(invoice.vendor_name) === norm(vendor_name));
+}
+
 /** Load an invoice with its purchase order and the vendor's other invoices. */
 export async function loadInvoice(
   invoice_id: string,
@@ -267,12 +273,7 @@ export async function loadInvoice(
   const po = invoice.po_number
     ? storeGetResult<PORow>(await deps.callTool("store__purchase_orders__get", { key: invoice.po_number }))
     : undefined;
-  const others = rows<InvoiceRow>(
-    await deps.callTool("store__invoices__query", {
-      where: { vendor_name: invoice.vendor_name },
-      limit: 200,
-    }),
-  );
+  const others = await vendorInvoices(invoice.vendor_name, deps);
   return { invoice, po, others };
 }
 
