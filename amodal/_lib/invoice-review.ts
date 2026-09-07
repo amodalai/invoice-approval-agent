@@ -184,6 +184,16 @@ export function parseReviewResult(text: string): ReviewResult {
   if (typeof r.recommendation !== "string") {
     throw new Error(`${REVIEWER_SUBAGENT} JSON is missing a string \`recommendation\``);
   }
+  if (r.checks != null && (!Array.isArray(r.checks) || r.checks.some((check) =>
+    !check || typeof check !== "object" ||
+    !["purchase-order", "amount", "line-items", "duplicate"].includes(check.name) ||
+    !["pass", "flag", "fail"].includes(check.status) || typeof check.note !== "string"
+  ))) {
+    throw new Error(`${REVIEWER_SUBAGENT} JSON has invalid checks. Retry the review.`);
+  }
+  if (r.issues != null && (!Array.isArray(r.issues) || r.issues.some((issue) => typeof issue !== "string"))) {
+    throw new Error(`${REVIEWER_SUBAGENT} JSON has invalid issues. Retry the review.`);
+  }
   return {
     recommendation: r.recommendation,
     reason: typeof r.reason === "string" ? r.reason.trim() : "",

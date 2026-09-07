@@ -80,6 +80,20 @@ test("parses the reviewer's JSON even when wrapped in fences or prose", () => {
   assert.throws(() => parseReviewResult('{"summary":"x"}'), /missing a string/);
 });
 
+test("rejects malformed checks and issues before they reach the review screen", () => {
+  for (const fields of [
+    { checks: [null] },
+    { checks: [{ name: "amount", status: "unknown", note: "ok" }] },
+    { checks: [{ name: "unknown", status: "pass", note: "ok" }] },
+    { checks: [{ name: "amount", status: "pass", note: {} }] },
+    { checks: "all pass" },
+    { issues: [{ text: "A concern" }] },
+    { issues: "A concern" },
+  ]) {
+    assert.throws(() => parseReviewResult(JSON.stringify({ recommendation: "hold", ...fields })), /invalid (checks|issues)/);
+  }
+});
+
 test("storeGetResult treats the runtime's error envelope as missing", () => {
   assert.equal(storeGetResult({ error: "not found" }), undefined);
   assert.equal(storeGetResult(null), undefined);
@@ -114,6 +128,15 @@ const REPLY = JSON.stringify({
   summary: "Looks fine.",
   checks: [{ name: "amount", status: "pass", note: "ok" }],
   issues: [],
+});
+
+test("a malformed reviewer reply leaves the invoice available for retry without saving a review", async () => {
+  const { deps, store, calls } = fakeDeps(JSON.stringify({ recommendation: "hold", checks: [null] }), NOW);
+
+  await assert.rejects(runInvoiceReview("inv_brightline_0417", deps), /invalid checks/);
+
+  assert.equal(store.get("invoices:inv_brightline_0417")!.status, "new");
+  assert.ok(!calls.some(([name]) => name.endsWith("__set")));
 });
 
 test("on fresh stores the review seeds the dataset and reviews the in-memory example", async () => {
