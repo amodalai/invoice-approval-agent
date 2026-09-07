@@ -1,6 +1,6 @@
 # Invoice Approval Example
 
-![The approver's inbox: four reviewed invoices, each with the agent's recommendation and its one-sentence reason, and one review in progress showing its steps](docs/screenshot.png)
+![The approver's inbox: six invoices, with two recommendations, one review in progress, and three awaiting review](docs/screenshot.png)
 
 An Amodal agent that reviews vendor invoices before payment, in a two-persona
 accounts-payable demo for a fictional company, Larkspur Co. An invoice
