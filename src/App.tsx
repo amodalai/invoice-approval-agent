@@ -63,6 +63,9 @@ export default function App() {
   const [confirmReset, setConfirmReset] = useState(false);
   const [resetting, setResetting] = useState(false);
   const [resetError, setResetError] = useState<string | undefined>();
+  const queries = [invoicesQ, posQ, reviewsQ, eventsQ];
+  const loading = queries.some((q) => q.isLoading && !q.data);
+  const loadError = queries.find((q) => q.error)?.error;
 
   const reviews = new Map<string, ReviewRow[]>();
   for (const { value } of reviewsQ.data ?? []) reviews.set(value.invoice_id, [...(reviews.get(value.invoice_id) ?? []), value]);
@@ -87,7 +90,7 @@ export default function App() {
     }
   }
 
-  const empty = !invoicesQ.isLoading && !invoicesQ.error && data.invoices.length === 0;
+  const empty = !loading && !loadError && data.invoices.length === 0;
   useEffect(() => {
     if (!empty || seededRef.current) return;
     seededRef.current = true;
@@ -133,7 +136,7 @@ export default function App() {
       />
       <main className="page">
         {seedError ? (
-          <div className="banner error">
+          <div className="banner error" role="alert">
             {seedError}{" "}
             <button className="btn btn--ghost" onClick={() => void runSeed()}>
               Retry
@@ -141,10 +144,15 @@ export default function App() {
           </div>
         ) : null}
 
-        {invoicesQ.isLoading ? (
-          <div className="empty">Loading…</div>
+        {loadError ? (
+          <div className="banner error" role="alert">
+            Could not load the invoices and their review data. Check your runtime connection, then retry.{" "}
+            <button className="btn btn--ghost" onClick={() => void data.refetch()}>Retry</button>
+          </div>
+        ) : loading ? (
+          <div className="empty" role="status">Loading invoices and review data…</div>
         ) : seed.status === "running" ? (
-          <div className="empty">Loading the demo…</div>
+          <div className="empty" role="status">Loading the demo…</div>
         ) : (
           <Screen route={route} data={data} persona={persona} />
         )}
