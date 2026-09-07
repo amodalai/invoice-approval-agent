@@ -75,6 +75,8 @@ export function reviewKey(invoice_id: string, revision: number, createdAt: Date)
 const norm = (s: unknown) => String(s ?? "").trim().toLowerCase();
 const money = (n: number) => `$${n.toLocaleString("en-US")}`;
 const sentence = (s: string) => (s ? s[0].toUpperCase() + s.slice(1).replace(/\.?$/, ".") : "");
+const balanceReason = (m: InvoiceMath) =>
+  `over the PO's remaining balance by ${money(m.variance_usd!)} (tolerance ${money(m.tolerance_usd!)})`;
 
 /**
  * The earliest other invoice from the same vendor with the same invoice
@@ -121,10 +123,7 @@ export function approvalBlockers(f: Facts): string[] {
   if (f.vendor_matches === false) out.push("the purchase order belongs to a different vendor");
   if (f.needs_po) out.push(`over ${money(f.math.policy.no_po_limit_usd)} with no purchase order`);
   if (f.po_status === "closed") out.push("the purchase order is closed");
-  if (f.math.within_tolerance === false)
-    out.push(
-      `over the PO's remaining balance by ${money(f.math.variance_usd!)} (tolerance ${money(f.math.tolerance_usd!)})`,
-    );
+  if (f.math.within_tolerance === false) out.push(balanceReason(f.math));
   if (!f.math.total_matches_lines)
     out.push(`line items sum to ${money(f.math.line_sum_usd)}, not the stated total`);
   return out;
@@ -382,7 +381,12 @@ export async function runInvoiceReview(
   }
   const issues = Array.from(new Set([...blockers, ...review.issues]));
   // A clamp means the reviewer's sentence argues for a softer call than the rule allows.
-  const reason = clamped || !review.reason ? sentence(blockers[0] ?? review.summary) : review.reason;
+  const clampReason = clamped && recommendation === "escalate"
+    ? facts.math.within_tolerance === false
+      ? balanceReason(facts.math)
+      : `over the ${money(facts.math.policy.controller_limit_usd)} controller approval limit`
+    : blockers[0];
+  const reason = clamped || !review.reason ? sentence(clampReason ?? review.summary) : review.reason;
 
   const now = deps.now();
   const nowIso = now.toISOString();

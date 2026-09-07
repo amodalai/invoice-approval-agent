@@ -179,6 +179,40 @@ test("code clamps an approve the facts forbid and folds the blockers into the is
   assert.ok(traces.some((t) => t.includes("clamped the recommendation from `approve` to `escalate`")));
 });
 
+test("a controller-limit clamp returns and saves the controller rule without adding an approval blocker", async () => {
+  const { deps, store } = fakeDeps(REPLY);
+  const invoice = {
+    ...inv("inv_brightline_0417"),
+    total_usd: 30_000,
+    line_items: [{ description: "Hosting", quantity: 1, unit_price_usd: 30_000 }],
+  };
+  const purchaseOrder = { ...po("PO-1041"), amount_usd: 40_000, billed_to_date_usd: 0 };
+  assert.deepEqual(approvalBlockers(checkInvoice(invoice, purchaseOrder, [])), []);
+  const out = await runInvoiceReview(invoice.invoice_id, deps, { invoice, po: purchaseOrder, others: [] });
+  assert.equal(out.recommendation, "escalate");
+  assert.equal(out.reason, "Over the $25,000 controller approval limit.");
+  assert.equal(store.get(`reviews:${out.review_id}`)!.reason, out.reason);
+});
+
+test("an escalation clamp names the balance rule ahead of a closed purchase order", async () => {
+  const { deps, store } = fakeDeps(REPLY);
+  const invoice = inv("inv_norwood_2288");
+  const purchaseOrder = { ...po("PO-1052"), status: "closed" as const };
+  const out = await runInvoiceReview(invoice.invoice_id, deps, { invoice, po: purchaseOrder, others: [] });
+  assert.equal(out.recommendation, "escalate");
+  assert.equal(out.reason, "Over the PO's remaining balance by $390 (tolerance $50).");
+  assert.equal(store.get(`reviews:${out.review_id}`)!.reason, out.reason);
+});
+
+test("an unchanged escalation keeps the reviewer's reason", async () => {
+  const reason = "The extra service needs controller review.";
+  const { deps, store } = fakeDeps(JSON.stringify({ recommendation: "escalate", reason }));
+  const out = await runInvoiceReview("inv_norwood_2288", deps);
+  assert.equal(out.recommendation, "escalate");
+  assert.equal(out.reason, reason);
+  assert.equal(store.get(`reviews:${out.review_id}`)!.reason, reason);
+});
+
 test("a duplicate is rejected whatever the reviewer says, from the stored rows", async () => {
   const { deps } = fakeDeps(REPLY, NOW);
   const out = await runInvoiceReview("inv_brightline_0417_resend", deps);
