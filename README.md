@@ -85,9 +85,9 @@ amodal eval
 ```
 
 The Vite development server needs an Amodal runtime at
-`VITE_RUNTIME_URL` (default `http://localhost:3001`). Cloud supplies a
-same-origin runtime URL when building the app. Vite alone serves the UI;
-it does not run the agents or stores.
+`VITE_RUNTIME_URL` (default `http://localhost:3001`). Production builds use
+the page's absolute origin for runtime requests and hosted authentication.
+Vite alone serves the UI; it does not run the agents or stores.
 
 `npm test` covers arithmetic, workflow transitions, hooks, UI recovery,
 contrast, and the OpenAPI contract. There is no separate lint command.

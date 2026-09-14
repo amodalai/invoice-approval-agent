@@ -11,7 +11,7 @@
     "test": "tsx --tsconfig tsconfig.app.json --test tests/*.test.ts src/*.test.ts src/components/*.test.tsx src/screens/*.test.ts && node --test tests/*.test.mjs"
   },
   "dependencies": {
-    "@amodalai/react": "0.3.124",
+    "@amodalai/react": "0.3.125",
     "react": "^19.2.0",
     "react-dom": "^19.2.0"
   },
