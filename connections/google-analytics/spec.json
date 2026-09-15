@@ -1,0 +1,25 @@
+{
+  "baseUrl": "https://analyticsdata.googleapis.com/v1beta",
+  "test": {
+    "method": "POST",
+    "path": "properties/529569356:runReport",
+    "body": {
+      "dateRanges": [
+        {
+          "startDate": "yesterday",
+          "endDate": "yesterday"
+        }
+      ],
+      "metrics": [
+        {
+          "name": "eventCount"
+        }
+      ],
+      "limit": "1"
+    }
+  },
+  "auth": {
+    "type": "oauth2",
+    "provider": "google-analytics"
+  }
+}

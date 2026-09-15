@@ -1,0 +1,34 @@
+{
+  "endpoints": {
+    "POST /properties/529569356:runReport": {
+      "intent": "read",
+      "returns": [
+        "report"
+      ]
+    },
+    "POST /properties/529569356:runRealtimeReport": {
+      "intent": "read",
+      "returns": [
+        "report"
+      ]
+    },
+    "POST /properties/529569356:batchRunReports": {
+      "intent": "read",
+      "returns": [
+        "report"
+      ]
+    },
+    "GET /properties/529569356/metadata": {
+      "intent": "read",
+      "returns": [
+        "metadata"
+      ]
+    },
+    "POST /properties/529569356:checkCompatibility": {
+      "intent": "read",
+      "returns": [
+        "compatibility"
+      ]
+    }
+  }
+}
