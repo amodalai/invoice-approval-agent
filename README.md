@@ -78,7 +78,6 @@ saved demo records. It does not expose an approval operation in the contract.
 ```sh
 npm install
 npm run dev
-npm test
 npm run typecheck
 npm run build
 amodal eval
@@ -89,10 +88,8 @@ The Vite development server needs an Amodal runtime at
 the page's absolute origin for runtime requests and hosted authentication.
 Vite alone serves the UI; it does not run the agents or stores.
 
-`npm test` covers arithmetic, workflow transitions, hooks, UI recovery,
-contrast, and the OpenAPI contract. There is no separate lint command.
-The `evals/` suite checks model behavior against a runtime; local unit tests
-use simulated model replies. Use an Amodal CLI compatible with the manifest.
+There is no separate lint command. The `evals/` suite checks model behavior
+against a runtime. Use an Amodal CLI compatible with the manifest.
 
 ## Adapt the template
 
